@@ -145,4 +145,26 @@
     <string name="play_mode_list_loop">List loop</string>
     <string name="play_mode_single_loop">Single loop</string>
     <string name="play_mode_shuffle">Shuffle</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="dynamic_color">Dynamic color</string>
+    <string name="dynamic_color_note">Requires Android 12 or newer</string>
+    <string name="amoled_dark">AMOLED black</string>
+    <string name="playback">Playback</string>
+    <string name="fade_in_out">Fade in/out</string>
+    <string name="fade_duration">%1$d ms</string>
+    <string name="remember_position">Remember playback position</string>
+    <string name="remember_position_note">Stored locally, no server needed</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_off">Off</string>
+    <string name="sleep_end_of_track">End of track</string>
+    <string name="sleep_minutes">%1$d minutes</string>
+    <string name="sleep_remaining">Sleep timer %1$s</string>
+    <string name="sleep_end_of_track_active">Pause after the current track</string>
+    <string name="speed">Playback speed</string>
+    <string name="speed_value">%1$sx</string>
+    <string name="more">More</string>
 </resources>

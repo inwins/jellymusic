@@ -1,6 +1,7 @@
 package com.example.jellymusic.ui
 
 import android.content.Intent
+import android.os.Build
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
+import com.example.jellymusic.data.ThemeMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -115,6 +117,149 @@ fun SettingsScreen(state: AppState) {
                     title = stringResource(R.string.server),
                     value = state.serverUrl ?: "-",
                 )
+            }
+
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                SettingsSectionTitle(stringResource(R.string.appearance))
+            }
+            item {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    Text(
+                        stringResource(R.string.theme),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            ThemeMode.SYSTEM to R.string.theme_system,
+                            ThemeMode.LIGHT to R.string.theme_light,
+                            ThemeMode.DARK to R.string.theme_dark,
+                        ).forEach { (mode, label) ->
+                            FilterChip(
+                                selected = state.settings.themeMode == mode,
+                                onClick = { state.settings.themeMode = mode },
+                                label = { Text(stringResource(label)) },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.dynamic_color),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                            Text(
+                                stringResource(R.string.dynamic_color_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = state.settings.dynamicColor,
+                        onCheckedChange = { state.settings.dynamicColor = it },
+                        enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                    )
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.amoled_dark),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = state.settings.amoledDark,
+                        onCheckedChange = { state.settings.amoledDark = it },
+                        enabled = state.settings.themeMode != ThemeMode.LIGHT,
+                    )
+                }
+            }
+
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                SettingsSectionTitle(stringResource(R.string.playback))
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.fade_in_out),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(R.string.fade_duration, state.settings.fadeMs),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.fadeEnabled,
+                        onCheckedChange = { state.settings.fadeEnabled = it },
+                    )
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(200, 300, 500, 1000).forEach { ms ->
+                        FilterChip(
+                            selected = state.settings.fadeMs == ms,
+                            onClick = { state.settings.fadeMs = ms },
+                            label = { Text("${ms}ms") },
+                            enabled = state.settings.fadeEnabled,
+                        )
+                    }
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.remember_position),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(R.string.remember_position_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.rememberPosition,
+                        onCheckedChange = { state.settings.rememberPosition = it },
+                    )
+                }
             }
 
             item {

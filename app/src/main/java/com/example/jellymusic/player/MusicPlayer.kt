@@ -13,6 +13,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -21,6 +22,7 @@ import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import com.example.jellymusic.data.AppSettings
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.StreamCache
 import com.example.jellymusic.data.baseItemFromJson
@@ -45,7 +47,11 @@ enum class PlayMode {
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-class MusicPlayer(context: Context, private val streamCache: StreamCache) {
+class MusicPlayer(
+    context: Context,
+    private val streamCache: StreamCache,
+    private val settings: AppSettings,
+) {
     var api: JellyfinApi? = null
     var downloadStore: DownloadStore? = null
 
@@ -53,6 +59,8 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
 
     private companion object {
         const val KEY_STATE = "playback_state"
+        const val KEY_RESUME = "resume_positions"
+        const val MAX_RESUME_ENTRIES = 500
     }
 
     private val defaultMediaSourceFactory =
@@ -110,6 +118,15 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
         private set
     var playMode by mutableStateOf(PlayMode.SEQUENTIAL)
         private set
+    var playbackSpeed by mutableStateOf(settings.playbackSpeed)
+        private set
+    var sleepTimerEndsAt by mutableStateOf<Long?>(null)
+        private set
+    var sleepAtEndOfTrack by mutableStateOf(false)
+        private set
+
+    private val resumePositions = mutableMapOf<String, Long>()
+    private var fadeJob: Job? = null
 
     private val prefs = appContext.getSharedPreferences("jellymusic_playback", Context.MODE_PRIVATE)
     private var tickCount = 0
@@ -121,9 +138,15 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
     private var lastRecordedId: String? = null
 
     init {
+        exo.setPlaybackParameters(PlaybackParameters(playbackSpeed))
+        loadResumePositions()
+
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                if (!playing) {
+                    saveResumePosition()
+                }
                 saveState()
             }
 
@@ -135,6 +158,11 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
                         recordPlay(item, isFullyListened())
                         lastRecordedId = item.id
                     }
+                    if (sleepAtEndOfTrack) {
+                        sleepAtEndOfTrack = false
+                        exo.volume = 1f
+                        exo.pause()
+                    }
                 }
             }
 
@@ -144,7 +172,20 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
                     recordPlay(previous, isFullyListened())
                     lastRecordedId = previous.id
                 }
+                if (!stopping && previous != null) {
+                    saveResumePosition(
+                        item = previous,
+                        position = maxOf(positionMs, exo.currentPosition),
+                    )
+                }
                 updateCurrent()
+                if (sleepAtEndOfTrack) {
+                    sleepAtEndOfTrack = false
+                    fadeTo(0f, settings.fadeMs.toLong()) {
+                        exo.pause()
+                        exo.volume = 1f
+                    }
+                }
                 saveState()
             }
         })
@@ -159,8 +200,10 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
         queue = items
         exo.setMediaItems(items.map(::toMediaItem))
         exo.prepare()
+        exo.volume = 0f
         exo.play()
         startPlaybackService()
+        fadeTo(1f, settings.fadeMs.toLong())
         updateCurrent()
         saveState()
     }
@@ -169,20 +212,34 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
         stopping = false
         lastRecordedId = null
         queue = items
-        exo.setMediaItems(items.map(::toMediaItem), startIndex, 0L)
+        val startItem = items.getOrNull(startIndex)
+        val startPosition = if (settings.rememberPosition && startItem != null) {
+            resumePositionFor(startItem)
+        } else {
+            0L
+        }
+        exo.setMediaItems(items.map(::toMediaItem), startIndex, startPosition)
         exo.prepare()
+        exo.volume = 0f
         exo.play()
         startPlaybackService()
+        fadeTo(1f, settings.fadeMs.toLong())
         updateCurrent()
+        positionMs = startPosition
         saveState()
     }
 
     fun toggle() {
-        if (exo.isPlaying) {
-            exo.pause()
+        if (exo.playWhenReady) {
+            fadeTo(0f, settings.fadeMs.toLong()) {
+                exo.pause()
+                exo.volume = 1f
+            }
         } else {
+            exo.volume = 0f
             exo.play()
             startPlaybackService()
+            fadeTo(1f, settings.fadeMs.toLong())
         }
     }
 
@@ -199,12 +256,27 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
     }
 
     fun jumpTo(index: Int) {
-        exo.seekTo(index, 0L)
-        if (!exo.isPlaying) exo.play()
+        val item = queue.getOrNull(index)
+        val position = if (settings.rememberPosition && item != null) {
+            resumePositionFor(item)
+        } else {
+            0L
+        }
+        exo.seekTo(index, position)
+        if (!exo.isPlaying) {
+            exo.volume = 0f
+            exo.play()
+            fadeTo(1f, settings.fadeMs.toLong())
+        }
     }
 
     fun stop() {
+        saveResumePosition()
         stopping = true
+        fadeJob?.cancel()
+        fadeJob = null
+        sleepTimerEndsAt = null
+        sleepAtEndOfTrack = false
         ticker?.cancel()
         ticker = null
         exo.stop()
@@ -260,6 +332,100 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
     private fun recordPlay(item: BaseItem, fullyListened: Boolean) {
         if (downloadStore?.isDownloaded(item.id) == true) return
         streamCache.recordPlay(item, fullyListened)
+    }
+
+    fun changePlaybackSpeed(speed: Float) {
+        playbackSpeed = speed
+        settings.playbackSpeed = speed
+        exo.setPlaybackParameters(PlaybackParameters(speed))
+        saveState()
+    }
+
+    fun setSleepTimerMinutes(minutes: Int?) {
+        sleepAtEndOfTrack = false
+        sleepTimerEndsAt = minutes?.let { System.currentTimeMillis() + it * 60_000L }
+    }
+
+    fun setSleepAtEndOfTrack() {
+        sleepTimerEndsAt = null
+        sleepAtEndOfTrack = true
+    }
+
+    fun clearSleepTimer() {
+        sleepTimerEndsAt = null
+        sleepAtEndOfTrack = false
+    }
+
+    private fun fadeTo(target: Float, durationMs: Long, onEnd: (() -> Unit)? = null) {
+        fadeJob?.cancel()
+        val start = exo.volume
+        if (!settings.fadeEnabled || durationMs <= 0L) {
+            exo.volume = target
+            onEnd?.invoke()
+            return
+        }
+        fadeJob = scope.launch {
+            val steps = (durationMs / 30L).coerceAtLeast(1L).toInt()
+            for (i in 1..steps) {
+                val value = start + (target - start) * i / steps
+                exo.volume = value.coerceIn(0f, 1f)
+                delay(durationMs / steps)
+            }
+            exo.volume = target.coerceIn(0f, 1f)
+            onEnd?.invoke()
+        }
+    }
+
+    private fun resumePositionFor(item: BaseItem): Long {
+        val saved = resumePositions[item.id] ?: return 0L
+        val duration = item.durationMs ?: 0L
+        if (saved < 5_000L) return 0L
+        if (duration > 0L && saved >= (duration * 0.95).toLong()) return 0L
+        return saved
+    }
+
+    private fun saveResumePosition(
+        item: BaseItem? = current,
+        position: Long = exo.currentPosition,
+    ) {
+        val baseItem = item ?: return
+        val duration = if (durationMs > 0L) durationMs else (baseItem.durationMs ?: 0L)
+        if (position < 5_000L) {
+            resumePositions.remove(baseItem.id)
+            saveResumePositions()
+            return
+        }
+        if (duration > 0L && position >= (duration * 0.95).toLong()) {
+            resumePositions.remove(baseItem.id)
+            saveResumePositions()
+            return
+        }
+        resumePositions[baseItem.id] = position
+        while (resumePositions.size > MAX_RESUME_ENTRIES) {
+            val first = resumePositions.keys.firstOrNull() ?: break
+            resumePositions.remove(first)
+        }
+        saveResumePositions()
+    }
+
+    private fun saveResumePositions() {
+        runCatching {
+            val json = JSONObject()
+            resumePositions.forEach { (id, position) -> json.put(id, position) }
+            prefs.edit().putString(KEY_RESUME, json.toString()).apply()
+        }
+    }
+
+    private fun loadResumePositions() {
+        val raw = prefs.getString(KEY_RESUME, null) ?: return
+        runCatching {
+            val json = JSONObject(raw)
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                resumePositions[key] = json.optLong(key)
+            }
+        }
     }
 
     fun selectPlayMode(mode: PlayMode) {
@@ -407,7 +573,18 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
                 durationMs = knownDuration()
                 if (exo.isPlaying) {
                     tickCount++
-                    if (tickCount % 20 == 0) saveState()
+                    if (tickCount % 20 == 0) {
+                        saveState()
+                        saveResumePosition()
+                    }
+                }
+                val sleepEnd = sleepTimerEndsAt
+                if (sleepEnd != null && System.currentTimeMillis() >= sleepEnd) {
+                    sleepTimerEndsAt = null
+                    fadeTo(0f, settings.fadeMs.toLong()) {
+                        exo.pause()
+                        exo.volume = 1f
+                    }
                 }
                 delay(250)
             }

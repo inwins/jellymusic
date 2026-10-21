@@ -1,11 +1,17 @@
 package com.example.jellymusic.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.example.jellymusic.data.AppSettings
+import com.example.jellymusic.data.ThemeMode
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF6750A4),
@@ -33,11 +39,35 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun JellyMusicTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    settings: AppSettings,
     content: @Composable () -> Unit,
 ) {
+    val darkTheme = when (settings.themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
+    val context = LocalContext.current
+    val useDynamic = settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+    var colorScheme = when {
+        useDynamic && darkTheme -> dynamicDarkColorScheme(context)
+        useDynamic -> dynamicLightColorScheme(context)
+        darkTheme -> DarkColors
+        else -> LightColors
+    }
+
+    if (darkTheme && settings.amoledDark) {
+        colorScheme = colorScheme.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceVariant = Color(0xFF141414),
+        )
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         content = content,
     )
 }

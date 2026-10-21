@@ -30,14 +30,14 @@ import kotlinx.coroutines.launch
 
 class AppState(private val context: Context) {
     private val session = SessionStore(context)
-    private val appSettings = AppSettings(context)
+    val settings = AppSettings(context)
     private val diskCache = DiskCache(context)
     private val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
         ?: "jellymusic-android"
 
-    val streamCache = StreamCache(context, appSettings)
-    val player = MusicPlayer(context, streamCache)
-    val downloads = DownloadStore(context, appSettings)
+    val streamCache = StreamCache(context, settings)
+    val player = MusicPlayer(context, streamCache, settings)
+    val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
     val localPlaylists = LocalPlaylistStore(context)
     val searchHistory = SearchHistoryStore(context)

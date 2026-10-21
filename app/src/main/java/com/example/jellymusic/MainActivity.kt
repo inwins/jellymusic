@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
         }
         val appState = (application as JellyMusicApp).appState
         setContent {
-            JellyMusicTheme {
+            JellyMusicTheme(settings = appState.settings) {
                 AppRoot(appState)
             }
         }

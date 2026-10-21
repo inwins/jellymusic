@@ -145,4 +145,26 @@
     <string name="play_mode_list_loop">列表循环</string>
     <string name="play_mode_single_loop">单曲循环</string>
     <string name="play_mode_shuffle">随机播放</string>
+    <string name="appearance">外观</string>
+    <string name="theme">主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="dynamic_color">动态取色</string>
+    <string name="dynamic_color_note">需要 Android 12 及以上</string>
+    <string name="amoled_dark">AMOLED 纯黑</string>
+    <string name="playback">播放</string>
+    <string name="fade_in_out">淡入淡出</string>
+    <string name="fade_duration">%1$d 毫秒</string>
+    <string name="remember_position">记住播放位置</string>
+    <string name="remember_position_note">仅本地记录，不依赖服务器</string>
+    <string name="sleep_timer">睡眠定时</string>
+    <string name="sleep_off">关闭</string>
+    <string name="sleep_end_of_track">播完当前</string>
+    <string name="sleep_minutes">%1$d 分钟</string>
+    <string name="sleep_remaining">睡眠定时 %1$s</string>
+    <string name="sleep_end_of_track_active">播完当前曲目后暂停</string>
+    <string name="speed">播放速度</string>
+    <string name="speed_value">%1$sx</string>
+    <string name="more">更多</string>
 </resources>

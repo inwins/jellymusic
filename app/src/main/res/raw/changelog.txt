@@ -1,5 +1,12 @@
 Jellyfin Music — Changelog
 
+2.0.0
+- Sleep timer (15/30/60/90 minutes or end of track)
+- Fade in/out with configurable duration
+- Playback speed from 0.5x to 2x
+- Theme styles: system, light, dark, dynamic color and AMOLED black
+- Local playback position memory, no server dependency
+
 1.9.0
 - Playback modes: sequential, list loop, single loop and shuffle
 - Play all and shuffle play for albums, playlists, genres and all songs

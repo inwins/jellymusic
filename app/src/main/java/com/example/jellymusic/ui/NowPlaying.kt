@@ -26,8 +26,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -42,6 +44,9 @@ import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,6 +60,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -81,6 +87,7 @@ import com.example.jellymusic.R
 import com.example.jellymusic.jellyfin.LyricLine
 import com.example.jellymusic.player.MusicPlayer
 import com.example.jellymusic.player.PlayMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.jellymusic.util.formatDuration
 
@@ -154,6 +161,15 @@ fun NowPlayingScreen(state: AppState) {
     val downloadProgress = state.downloads.progress[current.id]
     val favorite = state.favorites.isFavorite(current)
     val context = LocalContext.current
+    var moreMenuOpen by remember { mutableStateOf(false) }
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            nowMs = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
 
     val lyrics by produceState<List<LyricLine>?>(null, current.id) {
         value = try {
@@ -210,6 +226,74 @@ fun NowPlayingScreen(state: AppState) {
                     Icons.Default.PlaylistAdd,
                     contentDescription = stringResource(R.string.add_to_playlist),
                 )
+            }
+            Box {
+                IconButton(onClick = { moreMenuOpen = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.more),
+                    )
+                }
+                DropdownMenu(
+                    expanded = moreMenuOpen,
+                    onDismissRequest = { moreMenuOpen = false },
+                ) {
+                    Text(
+                        stringResource(R.string.sleep_timer),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sleep_off)) },
+                        onClick = {
+                            player.clearSleepTimer()
+                            moreMenuOpen = false
+                        },
+                    )
+                    listOf(15, 30, 60, 90).forEach { minutes ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.sleep_minutes, minutes)) },
+                            onClick = {
+                                player.setSleepTimerMinutes(minutes)
+                                moreMenuOpen = false
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sleep_end_of_track)) },
+                        onClick = {
+                            player.setSleepAtEndOfTrack()
+                            moreMenuOpen = false
+                        },
+                    )
+                    HorizontalDivider()
+                    Text(
+                        stringResource(R.string.speed),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { value ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(stringResource(R.string.speed_value, formatSpeed(value)))
+                            },
+                            trailingIcon = {
+                                if (player.playbackSpeed == value) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                player.changePlaybackSpeed(value)
+                                moreMenuOpen = false
+                            },
+                        )
+                    }
+                }
             }
             IconButton(
                 onClick = {
@@ -292,6 +376,38 @@ fun NowPlayingScreen(state: AppState) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        val sleepEnd = player.sleepTimerEndsAt
+        val sleepRemaining = sleepEnd?.let { (it - nowMs).coerceAtLeast(0L) }
+        if (sleepRemaining != null || player.sleepAtEndOfTrack || player.playbackSpeed != 1f) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (sleepRemaining != null && sleepRemaining > 0L) {
+                    Text(
+                        stringResource(R.string.sleep_remaining, formatDuration(sleepRemaining)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                } else if (player.sleepAtEndOfTrack) {
+                    Text(
+                        stringResource(R.string.sleep_end_of_track_active),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (player.playbackSpeed != 1f) {
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        stringResource(R.string.speed_value, formatSpeed(player.playbackSpeed)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -640,3 +756,6 @@ private fun LyricsView(
         }
     }
 }
+
+private fun formatSpeed(speed: Float): String =
+    if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString()
