@@ -318,9 +318,12 @@ class MusicPlayer(
     }
 
     private fun startPlaybackService() {
+        // MediaSessionService promotes itself to the foreground when it posts
+        // the media notification. Starting it with startForegroundService()
+        // would require startForeground() within 5 seconds, which can fail
+        // during rapid play/pause transitions and crash the process.
         runCatching {
-            ContextCompat.startForegroundService(
-                appContext,
+            appContext.startService(
                 Intent(appContext, PlaybackService::class.java),
             )
         }

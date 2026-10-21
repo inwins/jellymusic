@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.4.1
+- Fixed a crash when rapidly toggling playback
+- Keep the media service in the foreground for reliable background playback
+
 2.4.0
 - Equalizer with device presets and per-band adjustment
 - Folder browsing for music libraries

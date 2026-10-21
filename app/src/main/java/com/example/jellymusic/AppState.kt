@@ -1,5 +1,6 @@
 package com.example.jellymusic
 
+import android.content.ComponentName
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -10,6 +11,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import com.example.jellymusic.data.AppSettings
 import com.example.jellymusic.data.AuthHeaders
 import com.example.jellymusic.data.AutoDownloadScheduler
@@ -81,12 +86,38 @@ class AppState(private val context: Context) {
         }
     }
 
+    private var mediaControllerFuture: ListenableFuture<MediaController>? = null
+
     init {
         player.downloadStore = downloads
         runCatching { connectivityManager?.registerDefaultNetworkCallback(networkCallback) }
+        bindPlaybackService()
         if (session.hasSession) {
             restoreSession()
         }
+    }
+
+    private fun bindPlaybackService() {
+        if (mediaControllerFuture != null) return
+        runCatching {
+            val token = SessionToken(
+                context,
+                ComponentName(context, com.example.jellymusic.player.PlaybackService::class.java),
+            )
+            val future = MediaController.Builder(context, token).buildAsync()
+            future.addListener(
+                { runCatching { future.get() } },
+                MoreExecutors.directExecutor(),
+            )
+            mediaControllerFuture = future
+        }
+    }
+
+    private fun releasePlaybackService() {
+        mediaControllerFuture?.let { future ->
+            runCatching { MediaController.releaseFuture(future) }
+        }
+        mediaControllerFuture = null
     }
 
     private fun restoreSession() {
@@ -120,6 +151,7 @@ class AppState(private val context: Context) {
             userName.value = auth.displayName
             sessionExpired.value = false
             isLoggedIn.value = true
+            bindPlaybackService()
             backStack.clear()
             backStack.add(Screen.Home)
             scope.launch { syncOfflineChanges() }
@@ -132,6 +164,7 @@ class AppState(private val context: Context) {
     fun logout() {
         sessionExpired.value = false
         lyricsOverlay.hide()
+        releasePlaybackService()
         player.stop()
         session.clear()
         diskCache.clear()
