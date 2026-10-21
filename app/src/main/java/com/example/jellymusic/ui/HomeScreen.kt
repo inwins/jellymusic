@@ -133,7 +133,6 @@ fun HomeScreen(state: AppState) {
 
 @Composable
 fun HomeTab(state: AppState) {
-    var online by remember { mutableStateOf<Boolean?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
 
     if (state.isOffline) {
@@ -141,23 +140,13 @@ fun HomeTab(state: AppState) {
         return
     }
 
+    // Render cached content immediately; check connectivity in the background.
     LaunchedEffect(refresh, state.refreshSignal.value) {
-        online = null
-        val reachable = state.checkServer(force = refresh > 0)
-        online = reachable
-        if (reachable) {
-            state.syncOfflineChanges()
-        }
+        state.checkServer(force = refresh > 0)
+        state.syncOfflineChanges()
     }
 
-    when (online) {
-        null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-
-        false -> OfflineHome(state, onRetry = { refresh++ })
-
-        true -> Loaded(key = "home-$refresh", load = {
+    Loaded(key = "home-$refresh", load = {
             val api = state.requireApi()
             HomeData(api.getLatest(30), api.getFavorites())
         }) { data ->
@@ -238,7 +227,6 @@ fun HomeTab(state: AppState) {
                 }
             }
         }
-    }
 }
 
 @Composable

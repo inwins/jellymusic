@@ -4,7 +4,10 @@ import android.content.Context
 import android.util.Log
 import com.example.jellymusic.R
 import com.example.jellymusic.data.DiskCache
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -32,6 +35,12 @@ class JellyfinApi(
     var userId: String? = null
     var cache: DiskCache? = null
     var onUnauthorized: (() -> Unit)? = null
+
+    private data class MemEntry(val json: JSONObject, val time: Long)
+
+    private val memoryCache = android.util.LruCache<String, MemEntry>(128)
+    private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val refreshingKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -199,7 +208,7 @@ class JellyfinApi(
             "SortBy" to "SortName",
             "SortOrder" to "Ascending",
         ),
-        ttlMs = if (fresh) 0L else ITEMS_TTL_MS,
+        ttlMs = if (fresh) 0L else null,
     )
 
     suspend fun searchSongs(query: String, limit: Int = 50): List<BaseItem> =
@@ -281,7 +290,7 @@ class JellyfinApi(
     private suspend fun items(
         path: String,
         params: Map<String, String>,
-        ttlMs: Long = ITEMS_TTL_MS,
+        ttlMs: Long? = null,
     ): List<BaseItem> =
         withContext(Dispatchers.IO) {
             val request = Request.Builder()
@@ -289,26 +298,73 @@ class JellyfinApi(
                 .auth()
                 .get()
                 .build()
-            val json = cachedJson(request, ttlMs)
+            val json = cachedJson(request, ttlMs ?: resolveTtl(path, params))
             val arr = json.optJSONArray("Items") ?: JSONArray()
             (0 until arr.length()).map { parseBaseItem(arr.getJSONObject(it)) }
         }
 
+    private fun resolveTtl(path: String, params: Map<String, String>): Long = when {
+        params["SearchTerm"] != null -> DYNAMIC_TTL_MS
+        params["Filters"] == "IsFavorite" -> DYNAMIC_TTL_MS
+        params["SortBy"] == "DateCreated" -> DYNAMIC_TTL_MS
+        path == "/MusicGenres" || path == "/Artists" || path.endsWith("/Views") ->
+            LIBRARY_TTL_MS
+        params["IncludeItemTypes"] == "MusicAlbum" -> LIBRARY_TTL_MS
+        params["ParentId"] != null -> TRACKS_TTL_MS
+        params["IncludeItemTypes"] == "Playlist" -> TRACKS_TTL_MS
+        params["IncludeItemTypes"] == "Audio" -> TRACKS_TTL_MS
+        else -> ITEMS_TTL_MS
+    }
+
     private fun cachedJson(request: Request, ttlMs: Long): JSONObject {
         val key = request.url.toString()
-        cache?.get(key, ttlMs)?.let { cached ->
-            runCatching { JSONObject(cached) }.getOrNull()?.let { return it }
+        val now = System.currentTimeMillis()
+
+        val memoryEntry = memoryCache.get(key)
+        val diskText = if (memoryEntry == null) cache?.getAny(key) else null
+        val cached = memoryEntry?.json
+            ?: diskText?.let { runCatching { JSONObject(it) }.getOrNull() }
+
+        if (cached != null) {
+            val cachedAt = cache?.modifiedAt(key)?.takeIf { it > 0L }
+                ?: memoryEntry?.time
+                ?: now
+            if (memoryEntry == null) {
+                memoryCache.put(key, MemEntry(cached, now))
+            }
+            if (now - cachedAt > ttlMs) {
+                refreshInBackground(key, request)
+            }
+            return cached
         }
+
         return try {
             val json = execute(request)
+            memoryCache.put(key, MemEntry(json, now))
             cache?.put(key, json.toString())
             json
         } catch (e: IOException) {
+            memoryCache.get(key)?.let { return it.json }
             val stale = cache?.getAny(key)
             if (stale != null) {
                 runCatching { JSONObject(stale) }.getOrNull()?.let { return it }
             }
             throw e
+        }
+    }
+
+    private fun refreshInBackground(key: String, request: Request) {
+        if (!refreshingKeys.add(key)) return
+        refreshScope.launch {
+            try {
+                val json = execute(request)
+                memoryCache.put(key, MemEntry(json, System.currentTimeMillis()))
+                cache?.put(key, json.toString())
+            } catch (_: Exception) {
+                // Keep serving the stale cache; retry on the next access.
+            } finally {
+                refreshingKeys.remove(key)
+            }
         }
     }
 
@@ -511,7 +567,10 @@ class JellyfinApi(
     }
 
     private companion object {
-        const val ITEMS_TTL_MS = 10 * 60 * 1000L
+        const val ITEMS_TTL_MS = 30 * 60 * 1000L
+        const val LIBRARY_TTL_MS = 24 * 60 * 60 * 1000L
+        const val TRACKS_TTL_MS = 60 * 60 * 1000L
+        const val DYNAMIC_TTL_MS = 10 * 60 * 1000L
         const val LYRICS_TTL_MS = 24 * 60 * 60 * 1000L
     }
 }

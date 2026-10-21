@@ -15,6 +15,11 @@ class DiskCache(context: Context) {
         return runCatching { file.readText() }.getOrNull()
     }
 
+    fun modifiedAt(key: String): Long {
+        val file = fileFor(key)
+        return if (file.exists()) file.lastModified() else 0L
+    }
+
     fun getAny(key: String): String? {
         val file = fileFor(key)
         if (!file.exists()) return null
