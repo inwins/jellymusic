@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,8 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Clear
@@ -23,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,8 +44,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.jellyfin.BaseItem
@@ -110,6 +118,10 @@ fun SearchScreen(state: AppState) {
                 }
             },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = { state.searchHistory.add(query) },
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -132,14 +144,48 @@ fun SearchScreen(state: AppState) {
         }
 
         when {
-            query.isBlank() -> Box(
-                Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    stringResource(R.string.search_hint),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            query.isBlank() -> {
+                val history = state.searchHistory.history
+                if (history.isEmpty()) {
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            stringResource(R.string.search_hint),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stringResource(R.string.search_history),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { state.searchHistory.clear() }) {
+                                Text(stringResource(R.string.clear_history))
+                            }
+                        }
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(history) { value ->
+                                SuggestionChip(
+                                    onClick = { query = value },
+                                    label = { Text(value) },
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             loading -> Box(
@@ -182,7 +228,10 @@ fun SearchScreen(state: AppState) {
                                 item = item,
                                 index = index + 1,
                                 artworkUrl = state.artworkUrl(item, 120),
-                                onClick = { state.player.play(items, index) },
+                                onClick = {
+                                    state.searchHistory.add(query)
+                                    state.player.play(items, index)
+                                },
                                 showArtwork = true,
                                 isCurrent = state.player.current?.id == id,
                                 favorite = state.favorites.isFavorite(item),
@@ -202,6 +251,7 @@ fun SearchScreen(state: AppState) {
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
+                                        state.searchHistory.add(query)
                                         if (kind == 1) {
                                             state.navigate(Screen.Album(item.id, item.name))
                                         } else {

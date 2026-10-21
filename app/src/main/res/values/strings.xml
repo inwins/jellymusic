@@ -139,4 +139,10 @@
     <string name="search_artists">Artists</string>
     <string name="genres">Genres</string>
     <string name="drag_to_reorder">Drag to reorder</string>
+    <string name="search_history">Recent searches</string>
+    <string name="clear_history">Clear</string>
+    <string name="play_mode_sequential">Sequential</string>
+    <string name="play_mode_list_loop">List loop</string>
+    <string name="play_mode_single_loop">Single loop</string>
+    <string name="play_mode_shuffle">Shuffle</string>
 </resources>

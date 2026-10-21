@@ -37,6 +37,13 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
+enum class PlayMode {
+    SEQUENTIAL,
+    LIST_LOOP,
+    SINGLE_LOOP,
+    SHUFFLE,
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 class MusicPlayer(context: Context, private val streamCache: StreamCache) {
     var api: JellyfinApi? = null
@@ -101,9 +108,7 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
         private set
     var durationMs by mutableLongStateOf(0L)
         private set
-    var shuffleEnabled by mutableStateOf(false)
-        private set
-    var repeatMode by mutableIntStateOf(Player.REPEAT_MODE_OFF)
+    var playMode by mutableStateOf(PlayMode.SEQUENTIAL)
         private set
 
     private val prefs = appContext.getSharedPreferences("jellymusic_playback", Context.MODE_PRIVATE)
@@ -143,6 +148,21 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
                 saveState()
             }
         })
+    }
+
+    fun playShuffled(items: List<BaseItem>) {
+        if (items.isEmpty()) return
+        stopping = false
+        lastRecordedId = null
+        playMode = PlayMode.SHUFFLE
+        applyPlayMode(playMode)
+        queue = items
+        exo.setMediaItems(items.map(::toMediaItem))
+        exo.prepare()
+        exo.play()
+        startPlaybackService()
+        updateCurrent()
+        saveState()
     }
 
     fun play(items: List<BaseItem>, startIndex: Int) {
@@ -242,20 +262,45 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
         streamCache.recordPlay(item, fullyListened)
     }
 
-    fun toggleShuffle() {
-        shuffleEnabled = !shuffleEnabled
-        exo.shuffleModeEnabled = shuffleEnabled
+    fun selectPlayMode(mode: PlayMode) {
+        playMode = mode
+        applyPlayMode(mode)
         saveState()
     }
 
-    fun cycleRepeat() {
-        repeatMode = when (repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
+    fun cyclePlayMode() {
+        selectPlayMode(
+            when (playMode) {
+                PlayMode.SEQUENTIAL -> PlayMode.LIST_LOOP
+                PlayMode.LIST_LOOP -> PlayMode.SINGLE_LOOP
+                PlayMode.SINGLE_LOOP -> PlayMode.SHUFFLE
+                PlayMode.SHUFFLE -> PlayMode.SEQUENTIAL
+            },
+        )
+    }
+
+    private fun applyPlayMode(mode: PlayMode) {
+        when (mode) {
+            PlayMode.SEQUENTIAL -> {
+                exo.shuffleModeEnabled = false
+                exo.repeatMode = Player.REPEAT_MODE_OFF
+            }
+
+            PlayMode.LIST_LOOP -> {
+                exo.shuffleModeEnabled = false
+                exo.repeatMode = Player.REPEAT_MODE_ALL
+            }
+
+            PlayMode.SINGLE_LOOP -> {
+                exo.shuffleModeEnabled = false
+                exo.repeatMode = Player.REPEAT_MODE_ONE
+            }
+
+            PlayMode.SHUFFLE -> {
+                exo.shuffleModeEnabled = true
+                exo.repeatMode = Player.REPEAT_MODE_ALL
+            }
         }
-        exo.repeatMode = repeatMode
-        saveState()
     }
 
     fun playNext(item: BaseItem) {
@@ -311,13 +356,18 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
             if (items.isEmpty()) return
             val index = root.optInt("index", 0).coerceIn(0, items.lastIndex)
             val position = root.optLong("position", 0L).coerceAtLeast(0L)
-            shuffleEnabled = root.optBoolean("shuffle", false)
-            repeatMode = root.optInt("repeat", Player.REPEAT_MODE_OFF)
+            val legacyRepeat = root.optInt("repeat", Player.REPEAT_MODE_OFF)
+            playMode = runCatching { PlayMode.valueOf(root.optString("mode", "")) }.getOrNull()
+                ?: when {
+                    root.optBoolean("shuffle", false) -> PlayMode.SHUFFLE
+                    legacyRepeat == Player.REPEAT_MODE_ONE -> PlayMode.SINGLE_LOOP
+                    legacyRepeat == Player.REPEAT_MODE_ALL -> PlayMode.LIST_LOOP
+                    else -> PlayMode.SEQUENTIAL
+                }
 
             queue = items
             exo.setMediaItems(items.map(::toMediaItem), index, position)
-            exo.shuffleModeEnabled = shuffleEnabled
-            exo.repeatMode = repeatMode
+            applyPlayMode(playMode)
             exo.playWhenReady = false
             exo.prepare()
             updateCurrent()
@@ -339,8 +389,7 @@ class MusicPlayer(context: Context, private val streamCache: StreamCache) {
                 .put("queue", array)
                 .put("index", playIndex.coerceAtLeast(0))
                 .put("position", exo.currentPosition.coerceAtLeast(0L))
-                .put("shuffle", shuffleEnabled)
-                .put("repeat", repeatMode)
+                .put("mode", playMode.name)
             prefs.edit().putString(KEY_STATE, root.toString()).apply()
         } catch (_: Exception) {
         }

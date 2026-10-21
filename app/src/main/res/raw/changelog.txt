@@ -1,5 +1,17 @@
 Jellyfin Music — Changelog
 
+1.9.0
+- Playback modes: sequential, list loop, single loop and shuffle
+- Play all and shuffle play for albums, playlists, genres and all songs
+- Recent search history
+- Queue auto-scrolls while dragging near the edges
+- Release builds now use R8 and resource shrinking
+
+- Play all and shuffle play for albums, playlists, genres and all songs
+- Recent search history
+- Queue auto-scrolls while dragging near the edges
+- Release builds now use R8 and resource shrinking
+
 1.8.0
 - Drag to reorder the playback queue
 - Every release is committed to git and tagged

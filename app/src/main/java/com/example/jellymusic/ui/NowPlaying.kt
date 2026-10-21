@@ -1,8 +1,10 @@
 package com.example.jellymusic.ui
 
 import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,10 +59,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -75,6 +80,8 @@ import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.jellyfin.LyricLine
 import com.example.jellymusic.player.MusicPlayer
+import com.example.jellymusic.player.PlayMode
+import kotlinx.coroutines.launch
 import com.example.jellymusic.util.formatDuration
 
 @Composable
@@ -146,6 +153,7 @@ fun NowPlayingScreen(state: AppState) {
     val downloaded = state.downloads.isDownloaded(current.id)
     val downloadProgress = state.downloads.progress[current.id]
     val favorite = state.favorites.isFavorite(current)
+    val context = LocalContext.current
 
     val lyrics by produceState<List<LyricLine>?>(null, current.id) {
         value = try {
@@ -292,14 +300,38 @@ fun NowPlayingScreen(state: AppState) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = { player.toggleShuffle() }, modifier = Modifier.size(48.dp)) {
+            IconButton(
+                onClick = {
+                    player.cyclePlayMode()
+                    val label = when (player.playMode) {
+                        PlayMode.SEQUENTIAL -> R.string.play_mode_sequential
+                        PlayMode.LIST_LOOP -> R.string.play_mode_list_loop
+                        PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
+                        PlayMode.SHUFFLE -> R.string.play_mode_shuffle
+                    }
+                    Toast.makeText(context, context.getString(label), Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.size(48.dp),
+            ) {
+                val icon = when (player.playMode) {
+                    PlayMode.SEQUENTIAL -> Icons.Default.PlaylistPlay
+                    PlayMode.LIST_LOOP -> Icons.Default.Repeat
+                    PlayMode.SINGLE_LOOP -> Icons.Default.RepeatOne
+                    PlayMode.SHUFFLE -> Icons.Default.Shuffle
+                }
+                val label = when (player.playMode) {
+                    PlayMode.SEQUENTIAL -> R.string.play_mode_sequential
+                    PlayMode.LIST_LOOP -> R.string.play_mode_list_loop
+                    PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
+                    PlayMode.SHUFFLE -> R.string.play_mode_shuffle
+                }
                 Icon(
-                    Icons.Default.Shuffle,
-                    contentDescription = stringResource(R.string.shuffle),
-                    tint = if (player.shuffleEnabled) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
+                    icon,
+                    contentDescription = stringResource(label),
+                    tint = if (player.playMode == PlayMode.SEQUENTIAL) {
                         MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.primary
                     },
                 )
             }
@@ -321,27 +353,6 @@ fun NowPlayingScreen(state: AppState) {
             }
             IconButton(onClick = { player.next() }, modifier = Modifier.size(56.dp)) {
                 Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.next), modifier = Modifier.size(40.dp))
-            }
-            IconButton(onClick = { player.cycleRepeat() }, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    if (player.repeatMode == Player.REPEAT_MODE_ONE) {
-                        Icons.Default.RepeatOne
-                    } else {
-                        Icons.Default.Repeat
-                    },
-                    contentDescription = stringResource(
-                        if (player.repeatMode == Player.REPEAT_MODE_ONE) {
-                            R.string.repeat_one
-                        } else {
-                            R.string.repeat
-                        },
-                    ),
-                    tint = if (player.repeatMode != Player.REPEAT_MODE_OFF) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
             }
         }
 
@@ -376,6 +387,7 @@ private fun QueueList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var dragDelta by remember { mutableFloatStateOf(0f) }
     var targetIndex by remember { mutableStateOf<Int?>(null) }
@@ -456,6 +468,15 @@ private fun QueueList(
                                     val info = listState.layoutInfo.visibleItemsInfo
                                         .firstOrNull { it.index == index }
                                     if (info != null) {
+                                        val viewportStart = listState.layoutInfo.viewportStartOffset
+                                        val viewportEnd = listState.layoutInfo.viewportEndOffset
+                                        val itemTop = info.offset + dragDelta
+                                        val itemBottom = itemTop + info.size
+                                        if (itemTop < viewportStart + 64) {
+                                            scope.launch { listState.scrollBy(-24f) }
+                                        } else if (itemBottom > viewportEnd - 64) {
+                                            scope.launch { listState.scrollBy(24f) }
+                                        }
                                         val center = info.offset + info.size / 2f + dragDelta
                                         val target = listState.layoutInfo.visibleItemsInfo
                                             .firstOrNull {

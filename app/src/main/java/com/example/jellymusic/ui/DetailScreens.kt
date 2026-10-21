@@ -18,8 +18,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -53,6 +55,7 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
                         subtitle = tracks.firstOrNull()?.albumArtist,
                         coverItem = tracks.firstOrNull(),
                         onPlay = { state.player.play(tracks, 0) },
+                        onShuffle = { state.player.playShuffled(tracks) },
                         onDownloadAll = {
                             state.api?.let { api ->
                                 tracks.forEach { state.downloads.download(api, it) }
@@ -129,6 +132,7 @@ fun PlaylistScreen(state: AppState, screen: Screen.Playlist) {
                             subtitle = stringResource(R.string.track_count, tracks.size),
                             coverItem = tracks.firstOrNull(),
                             onPlay = { state.player.play(tracks, 0) },
+                            onShuffle = { state.player.playShuffled(tracks) },
                             onDownloadAll = {
                                 state.api?.let { api ->
                                     tracks.forEach { state.downloads.download(api, it) }
@@ -207,6 +211,7 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
                         subtitle = stringResource(R.string.track_count, items.size),
                         coverItem = items.firstOrNull(),
                         onPlay = { state.player.play(items, 0) },
+                        onShuffle = { state.player.playShuffled(items) },
                     )
                 }
                 if (playlist.pendingSync) {
@@ -305,6 +310,7 @@ fun DetailHeader(
     subtitle: String?,
     coverItem: BaseItem?,
     onPlay: () -> Unit,
+    onShuffle: (() -> Unit)? = null,
     onDownloadAll: (() -> Unit)? = null,
 ) {
     Row(
@@ -335,6 +341,15 @@ fun DetailHeader(
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PlayIconButton(onClick = onPlay)
+                if (onShuffle != null) {
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = onShuffle) {
+                        Icon(
+                            Icons.Default.Shuffle,
+                            contentDescription = stringResource(R.string.shuffle),
+                        )
+                    }
+                }
                 if (onDownloadAll != null) {
                     Spacer(Modifier.width(12.dp))
                     TextButton(onClick = onDownloadAll) {

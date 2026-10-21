@@ -82,6 +82,16 @@ fun GenreSongsScreen(state: AppState, screen: Screen.GenreSongs) {
                 EmptyHint(stringResource(R.string.search_no_results))
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
+                    item {
+                        DetailHeader(
+                            state = state,
+                            title = screen.name,
+                            subtitle = stringResource(R.string.track_count, songs.size),
+                            coverItem = songs.firstOrNull(),
+                            onPlay = { state.player.play(songs, 0) },
+                            onShuffle = { state.player.playShuffled(songs) },
+                        )
+                    }
                     itemsIndexed(songs) { index, item ->
                         val id = item.id
                         TrackRow(

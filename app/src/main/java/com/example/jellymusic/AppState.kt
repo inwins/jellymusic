@@ -16,6 +16,7 @@ import com.example.jellymusic.data.DiskCache
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.FavoriteStore
 import com.example.jellymusic.data.LocalPlaylistStore
+import com.example.jellymusic.data.SearchHistoryStore
 import com.example.jellymusic.data.SessionStore
 import com.example.jellymusic.data.StreamCache
 import com.example.jellymusic.jellyfin.BaseItem
@@ -39,6 +40,7 @@ class AppState(private val context: Context) {
     val downloads = DownloadStore(context, appSettings)
     val favorites = FavoriteStore(context)
     val localPlaylists = LocalPlaylistStore(context)
+    val searchHistory = SearchHistoryStore(context)
 
     val isLoggedIn = mutableStateOf(session.hasSession)
     val isOnline = mutableStateOf(true)
