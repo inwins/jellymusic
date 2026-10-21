@@ -1,0 +1,57 @@
+Jellyfin Music — Changelog
+
+1.8.0
+- Drag to reorder the playback queue
+- Every release is committed to git and tagged
+
+1.7.0
+- Access tokens removed from stream, image and lyrics URLs
+- Authorization headers used for playback, downloads and artwork
+- Browse music by genre
+
+1.6.0
+- Search songs, albums and artists
+- All songs view with pagination
+
+1.5.0
+- Playlist rename/delete/remove now sync to the server
+- Shuffle and repeat modes
+- Play next, add to queue and remove from queue
+- Queue and playback position restored on launch
+- Cancel/retry downloads with error indication
+
+1.4.0
+- Background playback with notification, lock screen and Bluetooth controls
+- Audio focus handling and pause on headphone unplug
+- Auto sync when the network comes back
+- Session expiry prompts a new login
+
+1.3.0
+- Song search
+- Local-first favorites and playlists, synced when online
+- Playback cache, full-screen lyrics, configurable downloads
+- In-app changelog, UI internationalization
+- Progress bar and playback queue improvements
+
+1.2.0
+- Local-first favorites and playlists, synced automatically when online
+- Playback cache: songs are kept after a full listen (95%)
+- Cache eviction by play count, ties broken by the oldest last-played date
+- Full-screen lyrics
+- Configurable download folder with migration
+- Offline home shows downloaded songs
+- Playback queue with a larger area
+- Progress bar is now in sync with the song
+- UI internationalization (English / Chinese)
+- Settings page with safe logout and cache management
+
+1.1.0
+- Lyrics display
+- Download and offline playback
+- Duration and progress fixes
+- Single-line playlist layout
+
+1.0.0
+- Initial release
+- Jellyfin login and library browsing
+- Streaming playback with queue

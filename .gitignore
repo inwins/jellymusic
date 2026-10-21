@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+app/build/
+.kotlin/
+
+# Local machine configuration
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Build outputs
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local session helper (not part of the app)
+session.sh
+
+# Project version archives
+.versions/
