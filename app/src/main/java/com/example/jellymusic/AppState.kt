@@ -22,6 +22,7 @@ import com.example.jellymusic.data.SessionStore
 import com.example.jellymusic.data.StreamCache
 import com.example.jellymusic.jellyfin.BaseItem
 import com.example.jellymusic.jellyfin.JellyfinApi
+import com.example.jellymusic.player.LyricsOverlay
 import com.example.jellymusic.player.MusicPlayer
 import com.example.jellymusic.ui.Screen
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,7 @@ class AppState(private val context: Context) {
 
     val streamCache = StreamCache(context, settings)
     val player = MusicPlayer(context, streamCache, settings)
+    val lyricsOverlay = LyricsOverlay(context)
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
     val localPlaylists = LocalPlaylistStore(context)
@@ -129,6 +131,7 @@ class AppState(private val context: Context) {
 
     fun logout() {
         sessionExpired.value = false
+        lyricsOverlay.hide()
         player.stop()
         session.clear()
         diskCache.clear()
@@ -199,6 +202,10 @@ class AppState(private val context: Context) {
         if (!isLoggedIn.value) return
         logout()
         sessionExpired.value = true
+    }
+
+    fun toggleDesktopLyrics() {
+        lyricsOverlay.toggle(player, settings) { api }
     }
 
     fun requireApi(): JellyfinApi =

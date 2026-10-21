@@ -1,6 +1,9 @@
 package com.example.jellymusic.ui
 
 import androidx.activity.compose.BackHandler
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -56,6 +59,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -191,6 +195,10 @@ fun NowPlayingScreen(state: AppState) {
                 title = current.name,
                 lyrics = lyrics,
                 positionMs = player.positionMs,
+                offsetMs = state.settings.lyricsOffsetMs,
+                fontScale = state.settings.lyricsFontScale,
+                onOffsetChange = { state.settings.lyricsOffsetMs = it },
+                onFontScaleChange = { state.settings.lyricsFontScale = it },
                 onClose = { lyricsFullScreen = false },
                 onSeek = { player.seekTo(it) },
                 modifier = Modifier.fillMaxSize(),
@@ -293,6 +301,37 @@ fun NowPlayingScreen(state: AppState) {
                             },
                         )
                     }
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.desktop_lyrics)) },
+                        trailingIcon = {
+                            if (state.lyricsOverlay.enabled) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        },
+                        onClick = {
+                            moreMenuOpen = false
+                            if (state.lyricsOverlay.enabled) {
+                                state.lyricsOverlay.hide()
+                            } else if (Settings.canDrawOverlays(context)) {
+                                state.toggleDesktopLyrics()
+                            } else {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            Uri.parse("package:${context.packageName}"),
+                                        ),
+                                    )
+                                }
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.desktop_lyrics_permission),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        },
+                    )
                 }
             }
             IconButton(
@@ -482,6 +521,8 @@ fun NowPlayingScreen(state: AppState) {
             LyricsView(
                 lyrics = lyrics,
                 positionMs = player.positionMs,
+                offsetMs = state.settings.lyricsOffsetMs,
+                fontScale = state.settings.lyricsFontScale,
                 fullScreen = false,
                 onExpand = { lyricsFullScreen = true },
                 onSeekLine = {},
@@ -638,6 +679,10 @@ private fun FullScreenLyrics(
     title: String,
     lyrics: List<LyricLine>?,
     positionMs: Long,
+    offsetMs: Long,
+    fontScale: Float,
+    onOffsetChange: (Long) -> Unit,
+    onFontScaleChange: (Float) -> Unit,
     onClose: () -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -667,11 +712,37 @@ private fun FullScreenLyrics(
         LyricsView(
             lyrics = lyrics,
             positionMs = positionMs,
+            offsetMs = offsetMs,
+            fontScale = fontScale,
             fullScreen = true,
             onExpand = {},
             onSeekLine = onSeek,
             modifier = Modifier.weight(1f),
         )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { onFontScaleChange(fontScale - 0.1f) }) {
+                Text("A-")
+            }
+            TextButton(onClick = { onFontScaleChange(fontScale + 0.1f) }) {
+                Text("A+")
+            }
+            TextButton(onClick = { onOffsetChange(offsetMs - 500) }) {
+                Text("-0.5s")
+            }
+            TextButton(onClick = { onOffsetChange(offsetMs + 500) }) {
+                Text("+0.5s")
+            }
+        }
+        Text(
+            stringResource(R.string.lyrics_offset_value, formatLyricsOffset(offsetMs)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -679,6 +750,8 @@ private fun FullScreenLyrics(
 private fun LyricsView(
     lyrics: List<LyricLine>?,
     positionMs: Long,
+    offsetMs: Long,
+    fontScale: Float,
     fullScreen: Boolean,
     onExpand: () -> Unit,
     onSeekLine: (Long) -> Unit,
@@ -702,12 +775,13 @@ private fun LyricsView(
     }
 
     val synced = lyrics.any { it.startMs != null }
-    val currentIndex = remember(lyrics, positionMs, synced) {
+    val adjustedPosition = positionMs + offsetMs
+    val currentIndex = remember(lyrics, adjustedPosition, synced) {
         if (!synced) -1 else {
             var index = -1
             lyrics.forEachIndexed { i, line ->
                 val start = line.startMs ?: return@forEachIndexed
-                if (start <= positionMs) index = i
+                if (start <= adjustedPosition) index = i
             }
             index
         }
@@ -719,8 +793,8 @@ private fun LyricsView(
         }
     }
 
-    val currentSize = if (fullScreen) 30.sp else 24.sp
-    val otherSize = if (fullScreen) 22.sp else 18.sp
+    val currentSize = ((if (fullScreen) 30f else 24f) * fontScale).sp
+    val otherSize = ((if (fullScreen) 22f else 18f) * fontScale).sp
 
     LazyColumn(
         state = listState,
@@ -759,3 +833,6 @@ private fun LyricsView(
 
 private fun formatSpeed(speed: Float): String =
     if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString()
+
+private fun formatLyricsOffset(offsetMs: Long): String =
+    "%+.1f".format(offsetMs / 1000.0)

@@ -1,5 +1,11 @@
 Jellyfin Music — Changelog
 
+2.3.0
+- Desktop lyrics overlay (draggable, current and next line)
+- Lyrics font size adjustment
+- Lyrics offset adjustment in full-screen lyrics
+- Lyrics offset and font size apply to the overlay
+
 2.2.0
 - Gapless and buffering tuning with stall recovery
 - Notification and Bluetooth metadata with album art fallback

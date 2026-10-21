@@ -159,6 +159,26 @@ class AppSettings(context: Context) {
             prefs.edit().putBoolean(KEY_MANUAL_OFFLINE, value).apply()
         }
 
+    private var lyricsFontScaleState by mutableStateOf(prefs.getFloat(KEY_LYRICS_FONT_SCALE, 1f))
+
+    var lyricsFontScale: Float
+        get() = lyricsFontScaleState
+        set(value) {
+            val clamped = value.coerceIn(0.7f, 1.7f)
+            lyricsFontScaleState = clamped
+            prefs.edit().putFloat(KEY_LYRICS_FONT_SCALE, clamped).apply()
+        }
+
+    private var lyricsOffsetState by mutableStateOf(prefs.getLong(KEY_LYRICS_OFFSET_MS, 0L))
+
+    var lyricsOffsetMs: Long
+        get() = lyricsOffsetState
+        set(value) {
+            val clamped = value.coerceIn(-10_000L, 10_000L)
+            lyricsOffsetState = clamped
+            prefs.edit().putLong(KEY_LYRICS_OFFSET_MS, clamped).apply()
+        }
+
     private companion object {
         const val KEY_DOWNLOAD_TREE = "download_tree_uri"
         const val KEY_DOWNLOAD_LABEL = "download_dir_label"
@@ -177,6 +197,8 @@ class AppSettings(context: Context) {
         const val KEY_AUTO_WIFI_ONLY = "auto_download_wifi_only"
         const val KEY_AUTO_MAX_MB = "auto_download_max_mb"
         const val KEY_MANUAL_OFFLINE = "manual_offline"
+        const val KEY_LYRICS_FONT_SCALE = "lyrics_font_scale"
+        const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
         const val DEFAULT_CACHE_LIMIT_MB = 512
         const val DEFAULT_FADE_MS = 300
     }

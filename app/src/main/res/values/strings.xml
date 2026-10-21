@@ -186,4 +186,9 @@
     <string name="verify_downloads">Verify downloads</string>
     <string name="verify_downloads_ok">All downloads are valid</string>
     <string name="verify_downloads_result">Removed %1$d broken downloads</string>
+    <string name="lyrics_font_size">Lyrics font size</string>
+    <string name="lyrics_offset">Lyrics offset</string>
+    <string name="lyrics_offset_value">%1$s s</string>
+    <string name="desktop_lyrics">Desktop lyrics</string>
+    <string name="desktop_lyrics_permission">Grant the overlay permission, then enable desktop lyrics again</string>
 </resources>
