@@ -141,6 +141,7 @@ fun AllSongsScreen(state: AppState) {
                         downloaded = state.downloads.downloadedIds[id] == true,
                         downloading = state.downloads.progress[id],
                         downloadError = state.downloads.errors[id] != null,
+                        cached = state.streamCache.isCached(id),
                         onDownload = {
                             state.api?.let { api -> state.downloads.download(api, item) }
                         },

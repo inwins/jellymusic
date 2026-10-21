@@ -50,12 +50,22 @@ private fun TrackActionsDialog(state: AppState) {
     val downloaded = state.downloads.isDownloaded(item.id)
     val downloading = state.downloads.progress[item.id] != null
     val downloadError = state.downloads.errors[item.id] != null
+    val cached = state.streamCache.isCached(item.id)
 
     AlertDialog(
         onDismissRequest = { state.trackMenu = null },
         title = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
             Column {
+                Text(
+                    when {
+                        downloaded -> stringResource(R.string.downloaded)
+                        cached -> stringResource(R.string.cached)
+                        else -> stringResource(R.string.online)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 ActionRow(
                     icon = {
                         Icon(

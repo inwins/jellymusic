@@ -202,4 +202,11 @@
     <string name="ab_clear">清除 A-B</string>
     <string name="folders">文件夹</string>
     <string name="folder_empty">文件夹为空</string>
+    <string name="cached">已缓存</string>
+    <string name="online">线上</string>
+    <string name="cached_tap_to_download">已缓存，点击下载</string>
+    <string name="downloaded_songs">已下载</string>
+    <string name="cached_songs">已缓存</string>
+    <string name="no_cached_songs">暂无缓存歌曲</string>
+    <string name="download_all_cached">全部下载缓存</string>
 </resources>

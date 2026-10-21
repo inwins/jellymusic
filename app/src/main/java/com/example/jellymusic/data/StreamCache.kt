@@ -2,6 +2,7 @@ package com.example.jellymusic.data
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.mutableStateOf
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
@@ -60,6 +61,11 @@ class StreamCache(context: Context, private val settings: AppSettings) {
         }
         runCatching { upstreamFactory.setDefaultRequestProperties(headers) }
     }
+
+    val revision = mutableStateOf(0)
+
+    fun cachedItems(): List<BaseItem> =
+        entries.values.map { it.item }.sortedBy { it.name }
 
     var enabled: Boolean
         get() = settings.streamCacheEnabled
@@ -141,6 +147,7 @@ class StreamCache(context: Context, private val settings: AppSettings) {
             )
         }
         saveIndex()
+        revision.value += 1
         ioScope.launch { evictIfNeeded(exceptKey = key) }
     }
 
@@ -162,11 +169,13 @@ class StreamCache(context: Context, private val settings: AppSettings) {
             if (sizeBytes() >= before) break
         }
         saveIndex()
+        revision.value += 1
     }
 
     fun clear() {
         entries.clear()
         saveIndex()
+        revision.value += 1
         ioScope.launch {
             runCatching {
                 simpleCache.keys.toList().forEach { key ->

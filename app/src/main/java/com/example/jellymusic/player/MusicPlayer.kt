@@ -47,6 +47,13 @@ enum class PlayMode {
     SHUFFLE,
 }
 
+fun nextPlayMode(mode: PlayMode): PlayMode = when (mode) {
+    PlayMode.SEQUENTIAL -> PlayMode.LIST_LOOP
+    PlayMode.LIST_LOOP -> PlayMode.SINGLE_LOOP
+    PlayMode.SINGLE_LOOP -> PlayMode.SHUFFLE
+    PlayMode.SHUFFLE -> PlayMode.SEQUENTIAL
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 class MusicPlayer(
     context: Context,
@@ -477,14 +484,7 @@ class MusicPlayer(
     }
 
     fun cyclePlayMode() {
-        selectPlayMode(
-            when (playMode) {
-                PlayMode.SEQUENTIAL -> PlayMode.LIST_LOOP
-                PlayMode.LIST_LOOP -> PlayMode.SINGLE_LOOP
-                PlayMode.SINGLE_LOOP -> PlayMode.SHUFFLE
-                PlayMode.SHUFFLE -> PlayMode.SEQUENTIAL
-            },
-        )
+        selectPlayMode(nextPlayMode(playMode))
     }
 
     private fun applyPlayMode(mode: PlayMode) {

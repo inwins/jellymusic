@@ -202,4 +202,11 @@
     <string name="ab_clear">Clear A-B</string>
     <string name="folders">Folders</string>
     <string name="folder_empty">This folder is empty</string>
+    <string name="cached">Cached</string>
+    <string name="online">Online</string>
+    <string name="cached_tap_to_download">Cached, tap to download</string>
+    <string name="downloaded_songs">Downloaded</string>
+    <string name="cached_songs">Cached</string>
+    <string name="no_cached_songs">No cached songs yet</string>
+    <string name="download_all_cached">Download all cached</string>
 </resources>

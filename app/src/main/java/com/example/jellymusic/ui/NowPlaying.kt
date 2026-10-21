@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -166,6 +167,9 @@ fun NowPlayingScreen(state: AppState) {
     val favorite = state.favorites.isFavorite(current)
     val context = LocalContext.current
     var moreMenuOpen by remember { mutableStateOf(false) }
+    var showSleepDialog by remember { mutableStateOf(false) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
+    var showAbDialog by remember { mutableStateOf(false) }
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -246,62 +250,40 @@ fun NowPlayingScreen(state: AppState) {
                     expanded = moreMenuOpen,
                     onDismissRequest = { moreMenuOpen = false },
                 ) {
-                    Text(
-                        stringResource(R.string.sleep_timer),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sleep_off)) },
+                        text = { Text(stringResource(R.string.sleep_timer)) },
                         onClick = {
-                            player.clearSleepTimer()
                             moreMenuOpen = false
+                            showSleepDialog = true
                         },
                     )
-                    listOf(15, 30, 60, 90).forEach { minutes ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.sleep_minutes, minutes)) },
-                            onClick = {
-                                player.setSleepTimerMinutes(minutes)
-                                moreMenuOpen = false
-                            },
-                        )
-                    }
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sleep_end_of_track)) },
+                        text = {
+                            Text(
+                                stringResource(R.string.speed) + ": " +
+                                    stringResource(
+                                        R.string.speed_value,
+                                        formatSpeed(player.playbackSpeed),
+                                    ),
+                            )
+                        },
                         onClick = {
-                            player.setSleepAtEndOfTrack()
                             moreMenuOpen = false
+                            showSpeedDialog = true
                         },
                     )
-                    HorizontalDivider()
-                    Text(
-                        stringResource(R.string.speed),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ab_repeat)) },
+                        trailingIcon = {
+                            if (player.repeatA != null) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        },
+                        onClick = {
+                            moreMenuOpen = false
+                            showAbDialog = true
+                        },
                     )
-                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { value ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(stringResource(R.string.speed_value, formatSpeed(value)))
-                            },
-                            trailingIcon = {
-                                if (player.playbackSpeed == value) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                    )
-                                }
-                            },
-                            onClick = {
-                                player.changePlaybackSpeed(value)
-                                moreMenuOpen = false
-                            },
-                        )
-                    }
-                    HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.desktop_lyrics)) },
                         trailingIcon = {
@@ -330,28 +312,6 @@ fun NowPlayingScreen(state: AppState) {
                                     Toast.LENGTH_LONG,
                                 ).show()
                             }
-                        },
-                    )
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.ab_set_a)) },
-                        onClick = {
-                            player.setRepeatPointA()
-                            moreMenuOpen = false
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.ab_set_b)) },
-                        onClick = {
-                            player.setRepeatPointB()
-                            moreMenuOpen = false
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.ab_clear)) },
-                        onClick = {
-                            player.clearRepeatPoints()
-                            moreMenuOpen = false
                         },
                     )
                 }
@@ -569,6 +529,107 @@ fun NowPlayingScreen(state: AppState) {
             )
         }
         Spacer(Modifier.height(4.dp))
+    }
+
+    if (showSleepDialog) {
+        AlertDialog(
+            onDismissRequest = { showSleepDialog = false },
+            title = { Text(stringResource(R.string.sleep_timer)) },
+            text = {
+                Column {
+                    TextButton(onClick = {
+                        player.clearSleepTimer()
+                        showSleepDialog = false
+                    }) {
+                        Text(stringResource(R.string.sleep_off))
+                    }
+                    listOf(15, 30, 60, 90).forEach { minutes ->
+                        TextButton(onClick = {
+                            player.setSleepTimerMinutes(minutes)
+                            showSleepDialog = false
+                        }) {
+                            Text(stringResource(R.string.sleep_minutes, minutes))
+                        }
+                    }
+                    TextButton(onClick = {
+                        player.setSleepAtEndOfTrack()
+                        showSleepDialog = false
+                    }) {
+                        Text(stringResource(R.string.sleep_end_of_track))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSleepDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showSpeedDialog) {
+        AlertDialog(
+            onDismissRequest = { showSpeedDialog = false },
+            title = { Text(stringResource(R.string.speed)) },
+            text = {
+                Column {
+                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { value ->
+                        TextButton(onClick = {
+                            player.changePlaybackSpeed(value)
+                            showSpeedDialog = false
+                        }) {
+                            Text(
+                                stringResource(R.string.speed_value, formatSpeed(value)),
+                                color = if (player.playbackSpeed == value) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSpeedDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showAbDialog) {
+        AlertDialog(
+            onDismissRequest = { showAbDialog = false },
+            title = { Text(stringResource(R.string.ab_repeat)) },
+            text = {
+                Column {
+                    TextButton(onClick = {
+                        player.setRepeatPointA()
+                        showAbDialog = false
+                    }) {
+                        Text(stringResource(R.string.ab_set_a))
+                    }
+                    TextButton(onClick = {
+                        player.setRepeatPointB()
+                        showAbDialog = false
+                    }) {
+                        Text(stringResource(R.string.ab_set_b))
+                    }
+                    TextButton(onClick = {
+                        player.clearRepeatPoints()
+                        showAbDialog = false
+                    }) {
+                        Text(stringResource(R.string.ab_clear))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAbDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 
@@ -843,6 +904,7 @@ private fun LyricsView(
             Text(
                 line.text,
                 fontSize = if (isCurrent) currentSize else otherSize,
+                lineHeight = (if (isCurrent) currentSize else otherSize) * 1.35f,
                 fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (isCurrent) {
                     MaterialTheme.colorScheme.primary

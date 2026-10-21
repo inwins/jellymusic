@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
@@ -168,6 +169,7 @@ fun TrackRow(
     favorite: Boolean = false,
     onToggleFavorite: (() -> Unit)? = null,
     downloaded: Boolean = false,
+    cached: Boolean = false,
     downloading: Float? = null,
     downloadError: Boolean = false,
     onDownload: (() -> Unit)? = null,
@@ -246,6 +248,13 @@ fun TrackRow(
                         Icons.Default.DownloadDone,
                         contentDescription = stringResource(R.string.downloaded),
                         tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+
+                    cached -> Icon(
+                        Icons.Default.CloudDone,
+                        contentDescription = stringResource(R.string.cached_tap_to_download),
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp),
                     )
 

@@ -31,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -228,6 +229,7 @@ fun HomeTab(state: AppState) {
                         downloaded = state.downloads.downloadedIds[id] == true,
                         downloading = state.downloads.progress[id],
                         downloadError = state.downloads.errors[id] != null,
+                        cached = state.streamCache.isCached(id),
                         onDownload = {
                             state.api?.let { api -> state.downloads.download(api, item) }
                         },
@@ -296,6 +298,7 @@ fun OfflineHome(state: AppState, onRetry: () -> Unit) {
                 downloaded = true,
                 downloading = state.downloads.progress[id],
                         downloadError = state.downloads.errors[id] != null,
+                        cached = state.streamCache.isCached(id),
                 onDownload = { state.downloads.delete(item) },
                 onLongClick = { state.trackMenu = item },
             )
@@ -786,35 +789,105 @@ private fun ServerPlaylistRow(
 
 @Composable
 fun DownloadsTab(state: AppState) {
+    var showCached by rememberSaveable { mutableStateOf(false) }
     val downloadedMap = state.downloads.downloadedIds
-    val items = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
-
-    if (items.isEmpty()) {
-        EmptyHint(stringResource(R.string.no_downloads_hint))
-        return
+    val revision = state.streamCache.revision.value
+    val downloaded = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
+    val cached = remember(revision, downloadedMap.toMap()) {
+        state.streamCache.cachedItems().filter { !state.downloads.isDownloaded(it.id) }
     }
 
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            SectionTitle(stringResource(R.string.downloaded_count, items.size))
-        }
-        itemsIndexed(items) { index, item ->
-            val id = item.id
-            TrackRow(
-                item = item,
-                index = index + 1,
-                artworkUrl = state.artworkUrl(item, 120),
-                onClick = { state.player.play(items, index) },
-                showArtwork = true,
-                isCurrent = state.player.current?.id == id,
-                favorite = state.favorites.isFavorite(item),
-                onToggleFavorite = { state.favorites.toggle(item) },
-                downloaded = true,
-                downloading = state.downloads.progress[id],
-                        downloadError = state.downloads.errors[id] != null,
-                onDownload = { state.downloads.delete(item) },
-                onLongClick = { state.trackMenu = item },
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = !showCached,
+                onClick = { showCached = false },
+                label = {
+                    Text(
+                        stringResource(R.string.downloaded_songs) + " (${downloaded.size})",
+                    )
+                },
             )
+            FilterChip(
+                selected = showCached,
+                onClick = { showCached = true },
+                label = {
+                    Text(
+                        stringResource(R.string.cached_songs) + " (${cached.size})",
+                    )
+                },
+            )
+        }
+
+        val items = if (showCached) cached else downloaded
+        if (items.isEmpty()) {
+            EmptyHint(
+                stringResource(
+                    if (showCached) R.string.no_cached_songs else R.string.no_downloads_hint,
+                ),
+            )
+            return@Column
+        }
+
+        LazyColumn(Modifier.fillMaxSize()) {
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionTitle(
+                        if (showCached) {
+                            stringResource(R.string.cached_songs) + " " + items.size
+                        } else {
+                            stringResource(R.string.downloaded_count, items.size)
+                        },
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (showCached) {
+                        TextButton(
+                            onClick = {
+                                state.api?.let { api ->
+                                    cached.forEach { state.downloads.download(api, it) }
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.download_all_cached))
+                        }
+                    }
+                }
+            }
+            itemsIndexed(items) { index, item ->
+                val id = item.id
+                TrackRow(
+                    item = item,
+                    index = index + 1,
+                    artworkUrl = state.artworkUrl(item, 120),
+                    onClick = { state.player.play(items, index) },
+                    showArtwork = true,
+                    isCurrent = state.player.current?.id == id,
+                    favorite = state.favorites.isFavorite(item),
+                    onToggleFavorite = { state.favorites.toggle(item) },
+                    downloaded = !showCached,
+                    cached = showCached,
+                    downloading = state.downloads.progress[id],
+                    downloadError = state.downloads.errors[id] != null,
+                    onDownload = {
+                        if (showCached) {
+                            state.api?.let { api -> state.downloads.download(api, item) }
+                        } else {
+                            state.downloads.delete(item)
+                        }
+                    },
+                    onLongClick = { state.trackMenu = item },
+                )
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ fun BaseItem.toJson(): JSONObject = JSONObject()
     .put("hasLyrics", hasLyrics)
     .put("isFavorite", isFavorite)
     .put("playlistItemId", playlistItemId)
+    .put("collectionType", collectionType)
     .put("childCount", childCount)
     .put("artists", JSONArray(artists))
 
@@ -45,6 +46,7 @@ fun baseItemFromJson(json: JSONObject): BaseItem {
         hasLyrics = json.optBoolean("hasLyrics", false),
         isFavorite = json.optBoolean("isFavorite", false),
         playlistItemId = json.optString("playlistItemId").takeIf { it.isNotBlank() },
+        collectionType = json.optString("collectionType").takeIf { it.isNotBlank() },
         childCount = json.optInt("childCount", -1).takeIf { it >= 0 },
     )
 }

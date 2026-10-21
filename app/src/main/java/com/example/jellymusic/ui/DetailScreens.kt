@@ -91,6 +91,7 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
                         downloaded = state.downloads.downloadedIds[id] == true,
                         downloading = state.downloads.progress[id],
                         downloadError = state.downloads.errors[id] != null,
+                        cached = state.streamCache.isCached(id),
                         onDownload = {
                             state.api?.let { api -> state.downloads.download(api, track) }
                         },
@@ -168,6 +169,7 @@ fun PlaylistScreen(state: AppState, screen: Screen.Playlist) {
                             downloaded = state.downloads.downloadedIds[id] == true,
                             downloading = state.downloads.progress[id],
                         downloadError = state.downloads.errors[id] != null,
+                        cached = state.streamCache.isCached(id),
                             onDownload = {
                                 state.api?.let { api -> state.downloads.download(api, track) }
                             },
@@ -252,6 +254,7 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
                         downloaded = state.downloads.downloadedIds[id] == true,
                         downloading = state.downloads.progress[id],
                         downloadError = state.downloads.errors[id] != null,
+                        cached = state.streamCache.isCached(id),
                         onRemove = { state.localPlaylists.removeItem(playlist.id, id) },
                         onLongClick = { state.trackMenu = track },
                     )

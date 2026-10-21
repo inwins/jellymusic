@@ -1,5 +1,15 @@
 Jellyfin Music — Changelog
 
+2.5.0
+- Three song states: online, cached and downloaded
+- Downloads tab switches between downloaded and cached songs
+- Cached songs can be downloaded individually or all at once
+- Playback menu shortened with dedicated sleep timer, speed and A-B dialogs
+- More unit tests
+
+2.4.2
+- Fixed overlapping lyrics when increasing the font size
+
 2.4.1
 - Fixed a crash when rapidly toggling playback
 - Keep the media service in the foreground for reliable background playback
