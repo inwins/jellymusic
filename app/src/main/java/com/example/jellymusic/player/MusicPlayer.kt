@@ -110,6 +110,13 @@ class MusicPlayer(
         .setHandleAudioBecomingNoisy(true)
         .build()
 
+    val equalizer = EqualizerController(exo)
+
+    var repeatA by mutableStateOf<Long?>(null)
+        private set
+    var repeatB by mutableStateOf<Long?>(null)
+        private set
+
     var queue by mutableStateOf<List<BaseItem>>(emptyList())
         private set
     var current by mutableStateOf<BaseItem?>(null)
@@ -193,6 +200,8 @@ class MusicPlayer(
                     )
                 }
                 updateCurrent()
+                repeatA = null
+                repeatB = null
                 if (sleepAtEndOfTrack) {
                     sleepAtEndOfTrack = false
                     fadeTo(0f, settings.fadeMs.toLong()) {
@@ -346,6 +355,22 @@ class MusicPlayer(
     private fun recordPlay(item: BaseItem, fullyListened: Boolean) {
         if (downloadStore?.isDownloaded(item.id) == true) return
         streamCache.recordPlay(item, fullyListened)
+    }
+
+    fun setRepeatPointA() {
+        repeatA = exo.currentPosition.coerceAtLeast(0L)
+        repeatB = null
+    }
+
+    fun setRepeatPointB() {
+        val start = repeatA ?: exo.currentPosition.coerceAtLeast(0L)
+        repeatA = start
+        repeatB = exo.currentPosition.coerceAtLeast(start + 1_000L)
+    }
+
+    fun clearRepeatPoints() {
+        repeatA = null
+        repeatB = null
     }
 
     fun changePlaybackSpeed(speed: Float) {
@@ -593,6 +618,11 @@ class MusicPlayer(
                     }
                 }
                 val now = System.currentTimeMillis()
+                val pointA = repeatA
+                val pointB = repeatB
+                if (pointA != null && pointB != null && exo.currentPosition >= pointB) {
+                    exo.seekTo(pointA)
+                }
                 val sleepEnd = sleepTimerEndsAt
                 if (sleepEnd != null && now >= sleepEnd) {
                     sleepTimerEndsAt = null

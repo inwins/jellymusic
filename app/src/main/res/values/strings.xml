@@ -191,4 +191,15 @@
     <string name="lyrics_offset_value">%1$s s</string>
     <string name="desktop_lyrics">Desktop lyrics</string>
     <string name="desktop_lyrics_permission">Grant the overlay permission, then enable desktop lyrics again</string>
+    <string name="equalizer">Equalizer</string>
+    <string name="equalizer_enable">Enable equalizer</string>
+    <string name="equalizer_preset">Preset</string>
+    <string name="equalizer_reset">Reset</string>
+    <string name="equalizer_unavailable">Start playback to adjust the equalizer</string>
+    <string name="ab_repeat">A-B repeat</string>
+    <string name="ab_set_a">Set point A</string>
+    <string name="ab_set_b">Set point B</string>
+    <string name="ab_clear">Clear A-B</string>
+    <string name="folders">Folders</string>
+    <string name="folder_empty">This folder is empty</string>
 </resources>

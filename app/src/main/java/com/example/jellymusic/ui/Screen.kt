@@ -10,6 +10,8 @@ sealed class Screen {
     data object Search : Screen()
     data object AllSongs : Screen()
     data object Genres : Screen()
+    data object Folders : Screen()
+    data class Folder(val id: String, val name: String) : Screen()
     data class GenreSongs(val id: String, val name: String) : Screen()
     data object Settings : Screen()
     data object Changelog : Screen()

@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -84,6 +85,9 @@ fun HomeScreen(state: AppState) {
         CenterAlignedTopAppBar(
             title = { Text(stringResource(R.string.app_name)) },
             actions = {
+                IconButton(onClick = { state.navigate(Screen.Folders) }) {
+                    Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.folders))
+                }
                 IconButton(onClick = { state.navigate(Screen.Search) }) {
                     Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                 }

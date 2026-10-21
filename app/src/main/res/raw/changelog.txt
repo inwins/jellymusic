@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.4.0
+- Equalizer with device presets and per-band adjustment
+- Folder browsing for music libraries
+- A-B repeat
+
 2.3.0
 - Desktop lyrics overlay (draggable, current and next line)
 - Lyrics font size adjustment

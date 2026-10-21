@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,15 +16,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +75,7 @@ fun SettingsScreen(state: AppState) {
     var showLogoutConfirm by remember { mutableStateOf(false) }
     var showDirectoryChoice by remember { mutableStateOf(false) }
     var showClearCache by remember { mutableStateOf(false) }
+    var showEqualizer by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
@@ -259,6 +267,35 @@ fun SettingsScreen(state: AppState) {
                     Switch(
                         checked = state.settings.rememberPosition,
                         onCheckedChange = { state.settings.rememberPosition = it },
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { showEqualizer = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Tune,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.equalizer),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
@@ -664,6 +701,10 @@ fun SettingsScreen(state: AppState) {
         }
     }
 
+    if (showEqualizer) {
+        EqualizerDialog(state) { showEqualizer = false }
+    }
+
     if (showLogoutConfirm) {
         AlertDialog(
             onDismissRequest = { showLogoutConfirm = false },
@@ -816,3 +857,82 @@ private fun SettingSwitchRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+@Composable
+private fun EqualizerDialog(state: AppState, onDismiss: () -> Unit) {
+    val equalizer = state.player.equalizer
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.equalizer)) },
+        text = {
+            if (!equalizer.available) {
+                Text(stringResource(R.string.equalizer_unavailable))
+            } else {
+                Column(
+                    Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.equalizer_enable),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(
+                            checked = equalizer.enabled,
+                            onCheckedChange = { equalizer.changeEnabled(it) },
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.equalizer_preset),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        itemsIndexed(equalizer.presetNames) { index, name ->
+                            FilterChip(
+                                selected = equalizer.currentPreset == index,
+                                onClick = { equalizer.applyPreset(index) },
+                                label = { Text(name) },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    equalizer.bandLevels.forEachIndexed { index, level ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                formatFrequency(equalizer.centerFreqs.getOrElse(index) { 0 }),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.width(58.dp),
+                            )
+                            Slider(
+                                value = level.toFloat(),
+                                onValueChange = { equalizer.setBandLevel(index, it.toInt()) },
+                                valueRange = equalizer.minLevel.toFloat()..equalizer.maxLevel.toFloat(),
+                                enabled = equalizer.enabled,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+        dismissButton = {
+            if (equalizer.available) {
+                TextButton(onClick = { equalizer.applyPreset(0) }) {
+                    Text(stringResource(R.string.equalizer_reset))
+                }
+            }
+        },
+    )
+}
+
+private fun formatFrequency(hz: Int): String =
+    if (hz >= 1000) "%.1fk".format(hz / 1000.0) else "${hz}Hz"

@@ -332,6 +332,28 @@ fun NowPlayingScreen(state: AppState) {
                             }
                         },
                     )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ab_set_a)) },
+                        onClick = {
+                            player.setRepeatPointA()
+                            moreMenuOpen = false
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ab_set_b)) },
+                        onClick = {
+                            player.setRepeatPointB()
+                            moreMenuOpen = false
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ab_clear)) },
+                        onClick = {
+                            player.clearRepeatPoints()
+                            moreMenuOpen = false
+                        },
+                    )
                 }
             }
             IconButton(
@@ -419,7 +441,11 @@ fun NowPlayingScreen(state: AppState) {
 
         val sleepEnd = player.sleepTimerEndsAt
         val sleepRemaining = sleepEnd?.let { (it - nowMs).coerceAtLeast(0L) }
-        if (sleepRemaining != null || player.sleepAtEndOfTrack || player.playbackSpeed != 1f) {
+        val pointA = player.repeatA
+        val pointB = player.repeatB
+        if (sleepRemaining != null || player.sleepAtEndOfTrack || player.playbackSpeed != 1f ||
+            (pointA != null && pointB != null)
+        ) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -442,6 +468,14 @@ fun NowPlayingScreen(state: AppState) {
                     Spacer(Modifier.width(12.dp))
                     Text(
                         stringResource(R.string.speed_value, formatSpeed(player.playbackSpeed)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (pointA != null && pointB != null) {
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "A-B ${formatDuration(pointA)}–${formatDuration(pointB)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

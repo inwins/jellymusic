@@ -231,6 +231,20 @@ class JellyfinApi(
         ),
     )
 
+    suspend fun getUserViews(): List<BaseItem> = items(
+        "/Users/$userId/Views",
+        emptyMap(),
+    )
+
+    suspend fun getFolderChildren(parentId: String): List<BaseItem> = items(
+        "/Users/$userId/Items",
+        mapOf(
+            "ParentId" to parentId,
+            "SortBy" to "SortName",
+            "SortOrder" to "Ascending",
+        ),
+    )
+
     suspend fun getGenres(): List<BaseItem> = items(
         "/MusicGenres",
         mapOf(

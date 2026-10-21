@@ -191,4 +191,15 @@
     <string name="lyrics_offset_value">%1$s 秒</string>
     <string name="desktop_lyrics">桌面歌词</string>
     <string name="desktop_lyrics_permission">请先授予悬浮窗权限，然后再次开启桌面歌词</string>
+    <string name="equalizer">均衡器</string>
+    <string name="equalizer_enable">启用均衡器</string>
+    <string name="equalizer_preset">预设</string>
+    <string name="equalizer_reset">重置</string>
+    <string name="equalizer_unavailable">开始播放后可调节均衡器</string>
+    <string name="ab_repeat">A-B 循环</string>
+    <string name="ab_set_a">设置 A 点</string>
+    <string name="ab_set_b">设置 B 点</string>
+    <string name="ab_clear">清除 A-B</string>
+    <string name="folders">文件夹</string>
+    <string name="folder_empty">文件夹为空</string>
 </resources>

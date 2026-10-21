@@ -19,6 +19,7 @@ data class BaseItem(
     val hasImage: Boolean = false,
     val hasLyrics: Boolean = false,
     val isFavorite: Boolean = false,
+    val collectionType: String? = null,
     val playlistItemId: String? = null,
     val childCount: Int? = null,
 ) {
@@ -48,6 +49,7 @@ fun parseBaseItem(json: JSONObject): BaseItem {
         hasImage = imageTags?.has("Primary") == true,
         hasLyrics = json.optBoolean("HasLyrics", false),
         isFavorite = json.optJSONObject("UserData")?.optBoolean("IsFavorite") ?: false,
+        collectionType = json.optString("CollectionType").takeIf { it.isNotBlank() },
         playlistItemId = json.optString("PlaylistItemId").takeIf { it.isNotBlank() },
         childCount = json.optInt("ChildCount").takeIf { it >= 0 },
     )
