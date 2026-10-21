@@ -21,8 +21,8 @@ android {
         applicationId = "com.example.jellymusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 18
-        versionName = "2.6.0"
+        versionCode = 19
+        versionName = "2.6.1"
     }
 
     signingConfigs {

@@ -1,5 +1,7 @@
 package com.example.jellymusic.ui
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +22,10 @@ fun AppRoot(state: AppState) {
 
 @Composable
 fun MainScaffold(state: AppState) {
+    BackHandler(enabled = state.backStack.size > 1) {
+        state.back()
+    }
+
     val current = state.backStack.last()
     val player = state.player
     val showMiniPlayer = current != Screen.NowPlaying && player.current != null

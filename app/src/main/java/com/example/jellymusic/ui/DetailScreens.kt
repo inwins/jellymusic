@@ -26,19 +26,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.jellyfin.BaseItem
+import kotlinx.coroutines.launch
 
 @Composable
 fun AlbumScreen(state: AppState, screen: Screen.Album) {
@@ -188,6 +192,8 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
     var showRename by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var renameValue by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     if (playlist == null) {
         Column(Modifier.fillMaxSize()) {
@@ -206,6 +212,25 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
                 .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.End,
         ) {
+            if (playlist.pendingSync) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            val ok = state.syncOfflineChanges()
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    if (ok) R.string.sync_done else R.string.sync_failed,
+                                ),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
+                    enabled = !state.syncing.value,
+                ) {
+                    Text(stringResource(R.string.sync_now))
+                }
+            }
             TextButton(onClick = {
                 renameValue = playlist.name
                 showRename = true

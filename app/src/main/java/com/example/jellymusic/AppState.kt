@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -51,6 +52,7 @@ class AppState(private val context: Context) {
     val searchHistory = SearchHistoryStore(context)
 
     val isLoggedIn = mutableStateOf(session.hasSession)
+    var homeTab by mutableIntStateOf(0)
     val isOnline = mutableStateOf(true)
     val userName = mutableStateOf(session.userName)
     val sessionExpired = mutableStateOf(false)

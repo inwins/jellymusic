@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.6.1
+- Returning from a playlist keeps the Playlists tab selected
+- System back navigates within the app instead of closing it
+- Added sync buttons to the playlists tab and local playlist screen
+
 2.6.0
 - Screens render cached data instantly and refresh in the background
 - In-memory response cache with longer TTLs for library data

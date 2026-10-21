@@ -19,12 +19,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
+import android.widget.Toast
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -56,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,7 +76,7 @@ private data class HomeData(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(state: AppState) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val tab = state.homeTab
     val tabs = listOf(
         stringResource(R.string.tab_home),
         stringResource(R.string.tab_albums),
@@ -104,7 +107,7 @@ fun HomeScreen(state: AppState) {
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = tab == index,
-                    onClick = { tab = index },
+                    onClick = { state.homeTab = index },
                     text = { Text(title) },
                 )
             }
@@ -591,6 +594,8 @@ fun ArtistsTab(state: AppState) {
 fun PlaylistsTab(state: AppState) {
     var serverPlaylists by remember { mutableStateOf<List<BaseItem>?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         serverPlaylists = try {
@@ -615,6 +620,26 @@ fun PlaylistsTab(state: AppState) {
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            val ok = state.syncOfflineChanges()
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    if (ok) R.string.sync_done else R.string.sync_failed,
+                                ),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
+                    enabled = !state.syncing.value,
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.sync_now),
+                    )
+                }
                 TextButton(onClick = { showCreate = true }) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
