@@ -1,5 +1,12 @@
 Jellyfin Music — Changelog
 
+2.1.0
+- Auto-download favorites, playlists and recently added
+- Persistent download queue with limited concurrency
+- Manual and automatic offline mode with local-only browsing
+- Paginated albums and artists with sorting
+- Unit tests, GitHub Actions CI and optional keystore signing
+
 2.0.0
 - Sleep timer (15/30/60/90 minutes or end of track)
 - Fade in/out with configurable duration

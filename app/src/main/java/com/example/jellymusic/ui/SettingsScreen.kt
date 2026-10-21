@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
+import com.example.jellymusic.data.AutoDownloadScheduler
 import com.example.jellymusic.data.ThemeMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -259,6 +260,103 @@ fun SettingsScreen(state: AppState) {
                         checked = state.settings.rememberPosition,
                         onCheckedChange = { state.settings.rememberPosition = it },
                     )
+                }
+            }
+
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.offline_mode),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(R.string.offline_mode_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.manualOffline,
+                        onCheckedChange = { state.settings.manualOffline = it },
+                    )
+                }
+            }
+
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                SettingsSectionTitle(stringResource(R.string.auto_download))
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.auto_download_favorites),
+                    checked = state.settings.autoDownloadFavorites,
+                    onCheckedChange = { state.settings.autoDownloadFavorites = it },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.auto_download_playlists),
+                    checked = state.settings.autoDownloadPlaylists,
+                    onCheckedChange = { state.settings.autoDownloadPlaylists = it },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.auto_download_latest),
+                    checked = state.settings.autoDownloadLatest,
+                    onCheckedChange = { state.settings.autoDownloadLatest = it },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.auto_download_wifi_only),
+                    checked = state.settings.autoDownloadWifiOnly,
+                    onCheckedChange = { state.settings.autoDownloadWifiOnly = it },
+                )
+            }
+            item {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    Text(
+                        stringResource(R.string.auto_download_max, state.settings.autoDownloadMaxMb),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(1024, 2048, 4096, 8192).forEach { mb ->
+                            FilterChip(
+                                selected = state.settings.autoDownloadMaxMb == mb,
+                                onClick = { state.settings.autoDownloadMaxMb = mb },
+                                label = { Text(if (mb >= 1024) "${mb / 1024}G" else "${mb}M") },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = {
+                            AutoDownloadScheduler.runNow(context)
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.auto_download_started),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        },
+                    ) {
+                        Text(stringResource(R.string.auto_download_now))
+                    }
                 }
             }
 
@@ -662,5 +760,26 @@ private fun formatCacheSize(bytes: Long): String {
         "%.1f GB".format(mb / 1024.0)
     } else {
         "%.0f MB".format(mb)
+    }
+}
+
+@Composable
+private fun SettingSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

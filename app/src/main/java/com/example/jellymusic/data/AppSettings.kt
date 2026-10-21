@@ -105,6 +105,60 @@ class AppSettings(context: Context) {
         ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)!!)
     }.getOrDefault(ThemeMode.SYSTEM)
 
+    private var autoFavoritesState by mutableStateOf(prefs.getBoolean(KEY_AUTO_FAVORITES, false))
+
+    var autoDownloadFavorites: Boolean
+        get() = autoFavoritesState
+        set(value) {
+            autoFavoritesState = value
+            prefs.edit().putBoolean(KEY_AUTO_FAVORITES, value).apply()
+        }
+
+    private var autoPlaylistsState by mutableStateOf(prefs.getBoolean(KEY_AUTO_PLAYLISTS, false))
+
+    var autoDownloadPlaylists: Boolean
+        get() = autoPlaylistsState
+        set(value) {
+            autoPlaylistsState = value
+            prefs.edit().putBoolean(KEY_AUTO_PLAYLISTS, value).apply()
+        }
+
+    private var autoLatestState by mutableStateOf(prefs.getBoolean(KEY_AUTO_LATEST, false))
+
+    var autoDownloadLatest: Boolean
+        get() = autoLatestState
+        set(value) {
+            autoLatestState = value
+            prefs.edit().putBoolean(KEY_AUTO_LATEST, value).apply()
+        }
+
+    private var autoWifiOnlyState by mutableStateOf(prefs.getBoolean(KEY_AUTO_WIFI_ONLY, true))
+
+    var autoDownloadWifiOnly: Boolean
+        get() = autoWifiOnlyState
+        set(value) {
+            autoWifiOnlyState = value
+            prefs.edit().putBoolean(KEY_AUTO_WIFI_ONLY, value).apply()
+        }
+
+    private var autoMaxMbState by mutableStateOf(prefs.getInt(KEY_AUTO_MAX_MB, 2048))
+
+    var autoDownloadMaxMb: Int
+        get() = autoMaxMbState
+        set(value) {
+            autoMaxMbState = value
+            prefs.edit().putInt(KEY_AUTO_MAX_MB, value).apply()
+        }
+
+    private var manualOfflineState by mutableStateOf(prefs.getBoolean(KEY_MANUAL_OFFLINE, false))
+
+    var manualOffline: Boolean
+        get() = manualOfflineState
+        set(value) {
+            manualOfflineState = value
+            prefs.edit().putBoolean(KEY_MANUAL_OFFLINE, value).apply()
+        }
+
     private companion object {
         const val KEY_DOWNLOAD_TREE = "download_tree_uri"
         const val KEY_DOWNLOAD_LABEL = "download_dir_label"
@@ -117,6 +171,12 @@ class AppSettings(context: Context) {
         const val KEY_FADE_MS = "fade_ms"
         const val KEY_REMEMBER_POSITION = "remember_position"
         const val KEY_PLAYBACK_SPEED = "playback_speed"
+        const val KEY_AUTO_FAVORITES = "auto_download_favorites"
+        const val KEY_AUTO_PLAYLISTS = "auto_download_playlists"
+        const val KEY_AUTO_LATEST = "auto_download_latest"
+        const val KEY_AUTO_WIFI_ONLY = "auto_download_wifi_only"
+        const val KEY_AUTO_MAX_MB = "auto_download_max_mb"
+        const val KEY_MANUAL_OFFLINE = "manual_offline"
         const val DEFAULT_CACHE_LIMIT_MB = 512
         const val DEFAULT_FADE_MS = 300
     }

@@ -167,4 +167,20 @@
     <string name="speed">播放速度</string>
     <string name="speed_value">%1$sx</string>
     <string name="more">更多</string>
+    <string name="offline_mode">离线模式</string>
+    <string name="offline_mode_note">仅使用本地内容，不发起网络请求</string>
+    <string name="offline_banner">离线模式</string>
+    <string name="offline_hint">离线：仅显示本地内容</string>
+    <string name="auto_download">自动下载</string>
+    <string name="auto_download_favorites">自动下载收藏</string>
+    <string name="auto_download_playlists">自动下载歌单</string>
+    <string name="auto_download_latest">自动下载最新添加</string>
+    <string name="auto_download_wifi_only">仅 Wi-Fi 下载</string>
+    <string name="auto_download_max">上限 %1$d MB</string>
+    <string name="auto_download_now">立即执行</string>
+    <string name="sort">排序</string>
+    <string name="sort_name">名称</string>
+    <string name="sort_recent">最近添加</string>
+    <string name="sort_year">年份</string>
+    <string name="auto_download_started">已开始自动下载</string>
 </resources>

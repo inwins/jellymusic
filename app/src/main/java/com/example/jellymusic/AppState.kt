@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.jellymusic.data.AppSettings
 import com.example.jellymusic.data.AuthHeaders
+import com.example.jellymusic.data.AutoDownloadScheduler
 import com.example.jellymusic.data.DiskCache
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.FavoriteStore
@@ -94,6 +95,8 @@ class AppState(private val context: Context) {
         setupApi(a)
         api = a
         player.api = a
+        downloads.resumePending(a)
+        AutoDownloadScheduler.schedule(context)
         player.restoreState()
         scope.launch { syncOfflineChanges() }
     }
@@ -110,6 +113,8 @@ class AppState(private val context: Context) {
             session.userName = auth.displayName
             api = a
             player.api = a
+            downloads.resumePending(a)
+            AutoDownloadScheduler.schedule(context)
             userName.value = auth.displayName
             sessionExpired.value = false
             isLoggedIn.value = true
@@ -142,7 +147,11 @@ class AppState(private val context: Context) {
 
     private var lastServerCheckAt = 0L
 
+    val isOffline: Boolean
+        get() = settings.manualOffline || !isOnline.value
+
     suspend fun checkServer(force: Boolean = false): Boolean {
+        if (settings.manualOffline) return false
         val now = System.currentTimeMillis()
         if (!force && now - lastServerCheckAt < 30_000L) return isOnline.value
         lastServerCheckAt = now
@@ -154,6 +163,7 @@ class AppState(private val context: Context) {
 
     suspend fun syncOfflineChanges(): Boolean {
         val apiClient = api ?: return false
+        if (settings.manualOffline) return false
         if (syncing.value) return false
         if (!checkServer()) return false
         syncing.value = true

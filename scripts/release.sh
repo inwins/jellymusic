@@ -10,9 +10,16 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-GRADLE="${GRADLE:-/opt/gradle-8.7/bin/gradle}"
-if [[ ! -x "$GRADLE" ]]; then
-    GRADLE="gradle"
+if [[ -n "${GRADLE:-}" ]]; then
+    # Respect an explicit override (useful when the wrapper cannot download).
+    :
+elif [[ -x "$ROOT_DIR/gradlew" ]]; then
+    GRADLE="$ROOT_DIR/gradlew"
+else
+    GRADLE="/opt/gradle-8.7/bin/gradle"
+    if [[ ! -x "$GRADLE" ]]; then
+        GRADLE="gradle"
+    fi
 fi
 
 echo "==> Building v$VERSION"

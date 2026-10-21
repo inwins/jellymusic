@@ -26,3 +26,8 @@ session.sh
 
 # Project version archives
 .versions/
+
+# Signing secrets
+keystore.properties
+*.jks
+*.keystore

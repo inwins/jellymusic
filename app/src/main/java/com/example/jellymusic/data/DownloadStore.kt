@@ -52,10 +52,17 @@ class DownloadStore(
     val isMigrating: Boolean get() = migration.value != null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val queuePrefs = context.getSharedPreferences("jellymusic_downloads", Context.MODE_PRIVATE)
+    private val pending = mutableListOf<BaseItem>()
+    private var active = 0
+    private val maxConcurrent = 2
 
     init {
         loadIndex()
+        loadPending()
     }
+
+    fun pendingCount(): Int = pending.size
 
     fun uriFor(itemId: String): Uri? {
         val record = records[itemId] ?: return null
@@ -74,57 +81,19 @@ class DownloadStore(
 
     fun download(api: JellyfinApi, item: BaseItem) {
         val id = item.id
-        if (records.containsKey(id) || progress.containsKey(id)) return
-        progress[id] = 0f
-        errors.remove(id)
-        val job = scope.launch {
-            var lastUpdate = 0L
-            var tempUri: Uri? = null
-            try {
-                val name = fileName(item)
-                val tempName = "$name.part"
-                tempUri = withContext(Dispatchers.IO) { createDocument(tempName) }
-                    ?: throw IllegalStateException(context.getString(R.string.download_cannot_create))
-                withContext(Dispatchers.IO) {
-                    val output = openOutput(tempUri)
-                        ?: throw IllegalStateException(context.getString(R.string.download_cannot_write))
-                    output.use { stream ->
-                        api.downloadAudio(item, stream) { downloaded, total ->
-                            val now = System.currentTimeMillis()
-                            if (now - lastUpdate > 200) {
-                                lastUpdate = now
-                                val value = if (total != null && total > 0) {
-                                    (downloaded.toFloat() / total).coerceIn(0f, 1f)
-                                } else {
-                                    -1f
-                                }
-                                scope.launch { progress[id] = value }
-                            }
-                        }
-                    }
-                    val finalUri = finalizeDocument(tempUri, name)
-                        ?: throw IllegalStateException(context.getString(R.string.download_save_failed))
-                    records[id] = DownloadRecord(item, finalUri.toString())
-                }
-                saveIndex()
-                progress.remove(id)
-                downloadedIds[id] = true
-            } catch (e: CancellationException) {
-                tempUri?.let { deleteUri(it) }
-                progress.remove(id)
-                throw e
-            } catch (e: Exception) {
-                tempUri?.let { deleteUri(it) }
-                progress.remove(id)
-                errors[id] = e.message ?: context.getString(R.string.download_failed)
-            } finally {
-                jobs.remove(id)
-            }
-        }
-        jobs[id] = job
+        if (records.containsKey(id) || progress.containsKey(id) || pending.any { it.id == id }) return
+        pending.add(item)
+        savePending()
+        pump(api)
+    }
+
+    fun resumePending(api: JellyfinApi) {
+        pump(api)
     }
 
     fun cancel(item: BaseItem) {
+        pending.removeAll { it.id == item.id }
+        savePending()
         jobs.remove(item.id)?.cancel()
         progress.remove(item.id)
     }
@@ -132,6 +101,111 @@ class DownloadStore(
     fun retry(api: JellyfinApi, item: BaseItem) {
         errors.remove(item.id)
         download(api, item)
+    }
+
+    private fun pump(api: JellyfinApi) {
+        while (active < maxConcurrent && pending.isNotEmpty()) {
+            val item = pending.removeAt(0)
+            savePending()
+            active++
+            val job = scope.launch {
+                try {
+                    downloadNow(api, item)
+                } finally {
+                    jobs.remove(item.id)
+                    active = (active - 1).coerceAtLeast(0)
+                    pump(api)
+                }
+            }
+            jobs[item.id] = job
+        }
+    }
+
+    suspend fun downloadNow(api: JellyfinApi, item: BaseItem): Boolean {
+        val id = item.id
+        if (records.containsKey(id)) return true
+        withContext(Dispatchers.Main) {
+            progress[id] = 0f
+            errors.remove(id)
+        }
+        var lastUpdate = 0L
+        var tempUri: Uri? = null
+        try {
+            val name = fileName(item)
+            val tempName = "$name.part"
+            tempUri = withContext(Dispatchers.IO) { createDocument(tempName) }
+                ?: throw IllegalStateException(context.getString(R.string.download_cannot_create))
+            withContext(Dispatchers.IO) {
+                val output = openOutput(tempUri)
+                    ?: throw IllegalStateException(context.getString(R.string.download_cannot_write))
+                output.use { stream ->
+                    api.downloadAudio(item, stream) { downloaded, total ->
+                        val now = System.currentTimeMillis()
+                        if (now - lastUpdate > 200) {
+                            lastUpdate = now
+                            val value = if (total != null && total > 0) {
+                                (downloaded.toFloat() / total).coerceIn(0f, 1f)
+                            } else {
+                                -1f
+                            }
+                            scope.launch { progress[id] = value }
+                        }
+                    }
+                }
+                val finalUri = finalizeDocument(tempUri, name)
+                    ?: throw IllegalStateException(context.getString(R.string.download_save_failed))
+                records[id] = DownloadRecord(item, finalUri.toString())
+            }
+            saveIndex()
+            withContext(Dispatchers.Main) {
+                progress.remove(id)
+                downloadedIds[id] = true
+            }
+            return true
+        } catch (e: CancellationException) {
+            tempUri?.let { deleteUri(it) }
+            withContext(Dispatchers.Main) { progress.remove(id) }
+            throw e
+        } catch (e: Exception) {
+            tempUri?.let { deleteUri(it) }
+            withContext(Dispatchers.Main) {
+                progress.remove(id)
+                errors[id] = e.message ?: context.getString(R.string.download_failed)
+            }
+            return false
+        }
+    }
+
+    fun totalBytes(): Long {
+        var total = 0L
+        for (record in records.values) {
+            val uri = Uri.parse(record.uri)
+            total += if (uri.scheme == "file") {
+                File(uri.path ?: "").length()
+            } else {
+                runCatching { DocumentFile.fromSingleUri(context, uri)?.length() ?: 0L }
+                    .getOrDefault(0L)
+            }
+        }
+        return total
+    }
+
+    private fun savePending() {
+        runCatching {
+            val array = JSONArray()
+            pending.forEach { array.put(it.toJson()) }
+            queuePrefs.edit().putString(KEY_PENDING, array.toString()).apply()
+        }
+    }
+
+    private fun loadPending() {
+        val raw = queuePrefs.getString(KEY_PENDING, null) ?: return
+        runCatching {
+            val array = JSONArray(raw)
+            for (i in 0 until array.length()) {
+                pending.add(baseItemFromJson(array.getJSONObject(i)))
+            }
+        }
     }
 
     fun delete(item: BaseItem) {
@@ -370,6 +444,7 @@ class DownloadStore(
     }
 
     companion object {
+        private const val KEY_PENDING = "pending_downloads"
         private const val MIME_TYPE = "application/octet-stream"
         private val ALLOWED_EXTENSIONS = setOf(
             "mp3", "flac", "m4a", "aac", "ogg", "opus", "wav", "wma", "ape", "alac", "m4b",

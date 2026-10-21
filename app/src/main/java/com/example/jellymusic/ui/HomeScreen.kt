@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -28,6 +29,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,9 +43,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -54,6 +61,7 @@ import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.data.LocalPlaylist
 import com.example.jellymusic.jellyfin.BaseItem
+import kotlinx.coroutines.launch
 
 private data class HomeData(
     val latest: List<BaseItem>,
@@ -96,6 +104,18 @@ fun HomeScreen(state: AppState) {
                 )
             }
         }
+        if (state.isOffline) {
+            Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
+                Text(
+                    stringResource(R.string.offline_banner),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
+        }
         when (tab) {
             0 -> HomeTab(state)
             1 -> AlbumsTab(state)
@@ -110,6 +130,11 @@ fun HomeScreen(state: AppState) {
 fun HomeTab(state: AppState) {
     var online by remember { mutableStateOf<Boolean?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
+
+    if (state.isOffline) {
+        OfflineHome(state, onRetry = { refresh++ })
+        return
+    }
 
     LaunchedEffect(refresh, state.refreshSignal.value) {
         online = null
@@ -274,23 +299,169 @@ fun OfflineHome(state: AppState, onRetry: () -> Unit) {
     }
 }
 
+private enum class AlbumSort(
+    val sortBy: String,
+    val sortOrder: String,
+    val labelRes: Int,
+) {
+    NAME("SortName", "Ascending", R.string.sort_name),
+    RECENT("DateCreated", "Descending", R.string.sort_recent),
+    YEAR("ProductionYear", "Descending", R.string.sort_year),
+}
+
 @Composable
 fun AlbumsTab(state: AppState) {
-    Loaded(key = "albums", load = { state.requireApi().getAlbums() }) { albums ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize(),
+    if (state.isOffline) {
+        EmptyHint(stringResource(R.string.offline_hint))
+        return
+    }
+
+    val items = remember { mutableStateListOf<BaseItem>() }
+    var sort by remember { mutableStateOf(AlbumSort.NAME) }
+    var startIndex by remember { mutableIntStateOf(0) }
+    var loading by remember { mutableStateOf(false) }
+    var endReached by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var sortMenu by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+
+    suspend fun loadNext() {
+        if (loading || endReached) return
+        loading = true
+        try {
+            val page = state.requireApi().getAlbums(
+                startIndex = startIndex,
+                limit = LIST_PAGE_SIZE,
+                sortBy = sort.sortBy,
+                sortOrder = sort.sortOrder,
+            )
+            if (page.isEmpty()) {
+                endReached = true
+            } else {
+                items.addAll(page)
+                startIndex += page.size
+                if (page.size < LIST_PAGE_SIZE) endReached = true
+            }
+            error = null
+        } catch (e: Exception) {
+            error = e.message
+        } finally {
+            loading = false
+        }
+    }
+
+    LaunchedEffect(sort) {
+        items.clear()
+        startIndex = 0
+        endReached = false
+        error = null
+        loadNext()
+    }
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val last = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= items.size - 6
+        }
+    }
+    LaunchedEffect(shouldLoadMore, items.size) {
+        if (shouldLoadMore && items.isNotEmpty()) {
+            loadNext()
+        }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            items(albums, key = { it.id }) { album ->
-                CardItem(
-                    item = album,
-                    artworkUrl = state.artworkUrl(album, 400),
-                    subtitle = album.albumArtist,
-                    onClick = { state.navigate(Screen.Album(album.id, album.name)) },
+            Box {
+                TextButton(onClick = { sortMenu = true }) {
+                    Text(
+                        stringResource(R.string.sort) + ": " + stringResource(sort.labelRes),
+                    )
+                }
+                DropdownMenu(
+                    expanded = sortMenu,
+                    onDismissRequest = { sortMenu = false },
+                ) {
+                    AlbumSort.values().forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(option.labelRes)) },
+                            onClick = {
+                                sort = option
+                                sortMenu = false
+                            },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
                 )
+            }
+        }
+
+        if (items.isEmpty() && error != null) {
+            Column(
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { scope.launch { loadNext() } }) {
+                    Text(stringResource(R.string.retry))
+                }
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                state = gridState,
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(items, key = { it.id }) { album ->
+                    CardItem(
+                        item = album,
+                        artworkUrl = state.artworkUrl(album, 400),
+                        subtitle = album.albumArtist,
+                        onClick = { state.navigate(Screen.Album(album.id, album.name)) },
+                    )
+                }
+                if (loading) {
+                    item {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
+                if (error != null) {
+                    item {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TextButton(onClick = { scope.launch { loadNext() } }) {
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -298,21 +469,124 @@ fun AlbumsTab(state: AppState) {
 
 @Composable
 fun ArtistsTab(state: AppState) {
-    Loaded(key = "artists", load = { state.requireApi().getArtists() }) { artists ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            items(artists, key = { it.id }) { artist ->
-                CardItem(
-                    item = artist,
-                    artworkUrl = state.artworkUrl(artist, 400),
-                    subtitle = stringResource(R.string.artist),
-                    onClick = { state.navigate(Screen.Artist(artist.id, artist.name)) },
-                )
+    if (state.isOffline) {
+        EmptyHint(stringResource(R.string.offline_hint))
+        return
+    }
+
+    val items = remember { mutableStateListOf<BaseItem>() }
+    var startIndex by remember { mutableIntStateOf(0) }
+    var loading by remember { mutableStateOf(false) }
+    var endReached by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+
+    suspend fun loadNext() {
+        if (loading || endReached) return
+        loading = true
+        try {
+            val page = state.requireApi().getArtists(
+                startIndex = startIndex,
+                limit = LIST_PAGE_SIZE,
+            )
+            if (page.isEmpty()) {
+                endReached = true
+            } else {
+                items.addAll(page)
+                startIndex += page.size
+                if (page.size < LIST_PAGE_SIZE) endReached = true
+            }
+            error = null
+        } catch (e: Exception) {
+            error = e.message
+        } finally {
+            loading = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadNext()
+    }
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val last = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= items.size - 6
+        }
+    }
+    LaunchedEffect(shouldLoadMore, items.size) {
+        if (shouldLoadMore && items.isNotEmpty()) {
+            loadNext()
+        }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        if (loading) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            }
+        }
+        if (items.isEmpty() && error != null) {
+            Column(
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { scope.launch { loadNext() } }) {
+                    Text(stringResource(R.string.retry))
+                }
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                state = gridState,
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(items, key = { it.id }) { artist ->
+                    CardItem(
+                        item = artist,
+                        artworkUrl = state.artworkUrl(artist, 400),
+                        subtitle = stringResource(R.string.artist),
+                        onClick = { state.navigate(Screen.Artist(artist.id, artist.name)) },
+                    )
+                }
+                if (loading) {
+                    item {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
+                if (error != null) {
+                    item {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TextButton(onClick = { scope.launch { loadNext() } }) {
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -556,3 +830,5 @@ fun EmptyHint(text: String) {
         Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+private const val LIST_PAGE_SIZE = 100

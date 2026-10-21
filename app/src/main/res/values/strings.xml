@@ -167,4 +167,20 @@
     <string name="speed">Playback speed</string>
     <string name="speed_value">%1$sx</string>
     <string name="more">More</string>
+    <string name="offline_mode">Offline mode</string>
+    <string name="offline_mode_note">Use local content only, no network requests</string>
+    <string name="offline_banner">Offline mode</string>
+    <string name="offline_hint">Offline: showing local content only</string>
+    <string name="auto_download">Auto download</string>
+    <string name="auto_download_favorites">Download favorites</string>
+    <string name="auto_download_playlists">Download playlists</string>
+    <string name="auto_download_latest">Download recently added</string>
+    <string name="auto_download_wifi_only">Wi-Fi only</string>
+    <string name="auto_download_max">Limit %1$d MB</string>
+    <string name="auto_download_now">Run now</string>
+    <string name="sort">Sort</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_recent">Recently added</string>
+    <string name="sort_year">Year</string>
+    <string name="auto_download_started">Auto download started</string>
 </resources>

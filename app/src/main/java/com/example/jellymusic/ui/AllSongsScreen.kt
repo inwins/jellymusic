@@ -35,6 +35,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AllSongsScreen(state: AppState) {
+    if (state.isOffline) {
+        Column(Modifier.fillMaxSize()) {
+            TopBar(stringResource(R.string.all_songs), onBack = { state.back() })
+            EmptyHint(stringResource(R.string.offline_hint))
+        }
+        return
+    }
+
     val items = remember { mutableStateListOf<BaseItem>() }
     var loading by remember { mutableStateOf(false) }
     var endReached by remember { mutableStateOf(false) }

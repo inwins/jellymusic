@@ -30,6 +30,10 @@ import com.example.jellymusic.R
 fun GenresScreen(state: AppState) {
     Column(Modifier.fillMaxSize()) {
         TopBar(stringResource(R.string.genres), onBack = { state.back() })
+        if (state.isOffline) {
+            EmptyHint(stringResource(R.string.offline_hint))
+            return@Column
+        }
 
         Loaded(key = "genres", load = { state.requireApi().getGenres() }) { genres ->
             if (genres.isEmpty()) {
@@ -73,6 +77,10 @@ fun GenresScreen(state: AppState) {
 fun GenreSongsScreen(state: AppState, screen: Screen.GenreSongs) {
     Column(Modifier.fillMaxSize()) {
         TopBar(screen.name, onBack = { state.back() })
+        if (state.isOffline) {
+            EmptyHint(stringResource(R.string.offline_hint))
+            return@Column
+        }
 
         Loaded(
             key = "genre-${screen.id}",

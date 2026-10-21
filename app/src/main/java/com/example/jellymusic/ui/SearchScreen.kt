@@ -81,6 +81,12 @@ fun SearchScreen(state: AppState) {
             error = null
             return@LaunchedEffect
         }
+        if (state.isOffline) {
+            results = emptyList()
+            loading = false
+            error = null
+            return@LaunchedEffect
+        }
         loading = true
         error = null
         delay(350)
@@ -144,6 +150,16 @@ fun SearchScreen(state: AppState) {
         }
 
         when {
+            state.isOffline -> Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(R.string.offline_hint),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             query.isBlank() -> {
                 val history = state.searchHistory.history
                 if (history.isEmpty()) {
