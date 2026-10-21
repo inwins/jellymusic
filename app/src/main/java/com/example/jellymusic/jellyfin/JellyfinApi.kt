@@ -505,7 +505,17 @@ class JellyfinApi(
                 .auth()
                 .post(payload.toString().toRequestBody(jsonMediaType))
                 .build()
-            execute(request).getString("Id")
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                Log.d(TAG, "POST ${request.url} -> ${response.code}")
+                if (!response.isSuccessful) {
+                    if (response.code == 400) {
+                        throw IOException(context.getString(R.string.error_playlist_create))
+                    }
+                    throw IOException(describeError(response.code, body))
+                }
+                JSONObject(body).getString("Id")
+            }
         }
 
     suspend fun addToPlaylist(playlistId: String, itemIds: List<String>) =

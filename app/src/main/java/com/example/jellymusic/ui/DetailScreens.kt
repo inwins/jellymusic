@@ -219,10 +219,13 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
                             val ok = state.syncOfflineChanges()
                             Toast.makeText(
                                 context,
-                                context.getString(
-                                    if (ok) R.string.sync_done else R.string.sync_failed,
-                                ),
-                                Toast.LENGTH_SHORT,
+                                if (ok) {
+                                    context.getString(R.string.sync_done)
+                                } else {
+                                    state.localPlaylists.lastError
+                                        ?: context.getString(R.string.sync_failed)
+                                },
+                                Toast.LENGTH_LONG,
                             ).show()
                         }
                     },

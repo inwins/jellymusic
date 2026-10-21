@@ -209,4 +209,5 @@
     <string name="cached_songs">Cached</string>
     <string name="no_cached_songs">No cached songs yet</string>
     <string name="download_all_cached">Download all cached</string>
+    <string name="error_playlist_create">The server could not create the playlist. Check the server playlist folder (e.g. /config/data/playlists).</string>
 </resources>

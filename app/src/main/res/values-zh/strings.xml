@@ -209,4 +209,5 @@
     <string name="cached_songs">已缓存</string>
     <string name="no_cached_songs">暂无缓存歌曲</string>
     <string name="download_all_cached">全部下载缓存</string>
+    <string name="error_playlist_create">服务器无法创建歌单，请检查服务器播放列表目录（如 /config/data/playlists）是否可用。</string>
 </resources>

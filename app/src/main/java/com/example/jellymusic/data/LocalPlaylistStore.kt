@@ -37,6 +37,9 @@ class LocalPlaylistStore(context: Context) {
     val playlists = mutableStateListOf<LocalPlaylist>()
     private val deletions = mutableStateListOf<String>()
 
+    var lastError by mutableStateOf<String?>(null)
+        private set
+
     init {
         load()
     }
@@ -85,11 +88,13 @@ class LocalPlaylistStore(context: Context) {
     fun pendingCount(): Int = playlists.count { it.pendingSync } + deletions.size
 
     suspend fun sync(api: JellyfinApi): Boolean {
+        lastError = null
         for (serverId in deletions.toList()) {
             try {
                 api.deleteItem(serverId)
                 deletions.remove(serverId)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                lastError = e.message
                 save()
                 return false
             }
@@ -132,7 +137,8 @@ class LocalPlaylistStore(context: Context) {
                         playlist.syncedItemIds = playlist.syncedItemIds + toAdd
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                lastError = e.message
                 save()
                 return false
             }

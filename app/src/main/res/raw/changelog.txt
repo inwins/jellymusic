@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.6.2
+- Clearer error when the server cannot create a playlist
+- Sync error details shown in Settings
+
 2.6.1
 - Returning from a playlist keeps the Playlists tab selected
 - System back navigates within the app instead of closing it

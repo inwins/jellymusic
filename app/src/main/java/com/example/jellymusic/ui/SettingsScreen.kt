@@ -428,12 +428,15 @@ fun SettingsScreen(state: AppState) {
                             scope.launch {
                                 val ok = state.syncOfflineChanges()
                                 Toast.makeText(
-                                    context,
-                                    context.getString(
-                                        if (ok) R.string.sync_done else R.string.sync_failed,
-                                    ),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                context,
+                                if (ok) {
+                                    context.getString(R.string.sync_done)
+                                } else {
+                                    state.localPlaylists.lastError
+                                        ?: context.getString(R.string.sync_failed)
+                                },
+                                Toast.LENGTH_LONG,
+                            ).show()
                                 tick++
                             }
                         },
@@ -441,6 +444,17 @@ fun SettingsScreen(state: AppState) {
                     ) {
                         Text(stringResource(R.string.sync_now))
                     }
+                }
+            }
+
+            if (state.localPlaylists.lastError != null) {
+                item {
+                    Text(
+                        state.localPlaylists.lastError ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
                 }
             }
 
