@@ -183,4 +183,7 @@
     <string name="sort_recent">Recently added</string>
     <string name="sort_year">Year</string>
     <string name="auto_download_started">Auto download started</string>
+    <string name="verify_downloads">Verify downloads</string>
+    <string name="verify_downloads_ok">All downloads are valid</string>
+    <string name="verify_downloads_result">Removed %1$d broken downloads</string>
 </resources>

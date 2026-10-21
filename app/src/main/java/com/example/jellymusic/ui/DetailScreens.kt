@@ -46,7 +46,15 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
         TopBar(screen.name, onBack = { state.back() })
         Loaded(key = "album-${screen.id}", load = {
             state.requireApi().getAlbumTracks(screen.id)
-        }) { tracks ->
+        }) { loaded ->
+            val tracks = loaded.sortedWith(
+                compareBy<BaseItem>(
+                    { it.discNumber ?: 1 },
+                    { it.trackNumber ?: 0 },
+                    { it.name },
+                ),
+            )
+            val multiDisc = tracks.any { (it.discNumber ?: 1) > 1 }
             LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     DetailHeader(
@@ -69,6 +77,13 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
                         item = track,
                         index = index + 1,
                         artworkUrl = state.artworkUrl(track, 120),
+                        trackLabel = if (multiDisc) {
+                            "${track.discNumber ?: 1}-${
+                                (track.trackNumber ?: (index + 1)).toString().padStart(2, '0')
+                            }"
+                        } else {
+                            track.trackNumber?.toString()
+                        },
                         onClick = { state.player.play(tracks, index) },
                         isCurrent = state.player.current?.id == id,
                         favorite = state.favorites.isFavorite(track),

@@ -283,7 +283,13 @@ fun SettingsScreen(state: AppState) {
                     }
                     Switch(
                         checked = state.settings.manualOffline,
-                        onCheckedChange = { state.settings.manualOffline = it },
+                        onCheckedChange = { enabled ->
+                            state.settings.manualOffline = enabled
+                            if (!enabled) {
+                                state.refreshSignal.value += 1
+                                scope.launch { state.syncOfflineChanges() }
+                            }
+                        },
                     )
                 }
             }
@@ -441,6 +447,33 @@ fun SettingsScreen(state: AppState) {
                         enabled = !state.downloads.isMigrating,
                     ) {
                         Text(stringResource(R.string.restore_default))
+                    }
+                }
+            }
+
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = {
+                            val removed = state.downloads.verifyDownloads()
+                            Toast.makeText(
+                                context,
+                                if (removed > 0) {
+                                    context.getString(R.string.verify_downloads_result, removed)
+                                } else {
+                                    context.getString(R.string.verify_downloads_ok)
+                                },
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                            tick++
+                        },
+                    ) {
+                        Text(stringResource(R.string.verify_downloads))
                     }
                 }
             }

@@ -14,6 +14,7 @@ data class BaseItem(
     val parentId: String? = null,
     val runTimeTicks: Long? = null,
     val trackNumber: Int? = null,
+    val discNumber: Int? = null,
     val container: String? = null,
     val hasImage: Boolean = false,
     val hasLyrics: Boolean = false,
@@ -23,6 +24,7 @@ data class BaseItem(
 ) {
     val durationMs: Long? get() = runTimeTicks?.div(10_000)
     val primaryArtist: String? get() = albumArtist ?: artists.firstOrNull()
+    val trackArtist: String? get() = artists.joinToString(", ").ifBlank { albumArtist }
 }
 
 fun parseBaseItem(json: JSONObject): BaseItem {
@@ -41,6 +43,7 @@ fun parseBaseItem(json: JSONObject): BaseItem {
         parentId = json.optString("ParentId").takeIf { it.isNotBlank() },
         runTimeTicks = json.optLong("RunTimeTicks").takeIf { it > 0 },
         trackNumber = json.optInt("IndexNumber").takeIf { it > 0 },
+        discNumber = json.optInt("ParentIndexNumber").takeIf { it > 0 },
         container = json.optString("Container").takeIf { it.isNotBlank() },
         hasImage = imageTags?.has("Primary") == true,
         hasLyrics = json.optBoolean("HasLyrics", false),

@@ -162,6 +162,7 @@ fun TrackRow(
     index: Int,
     artworkUrl: String?,
     onClick: () -> Unit,
+    trackLabel: String? = null,
     showArtwork: Boolean = false,
     isCurrent: Boolean = false,
     favorite: Boolean = false,
@@ -184,9 +185,12 @@ fun TrackRow(
             Artwork(artworkUrl, 44.dp)
             Spacer(Modifier.width(12.dp))
         } else {
-            Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.width(if (trackLabel != null) 36.dp else 28.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
-                    index.toString(),
+                    trackLabel ?: index.toString(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -206,7 +210,7 @@ fun TrackRow(
                 },
             )
             Text(
-                item.primaryArtist.orEmpty(),
+                item.trackArtist.orEmpty(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,

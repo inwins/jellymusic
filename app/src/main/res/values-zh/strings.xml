@@ -183,4 +183,7 @@
     <string name="sort_recent">最近添加</string>
     <string name="sort_year">年份</string>
     <string name="auto_download_started">已开始自动下载</string>
+    <string name="verify_downloads">校验下载</string>
+    <string name="verify_downloads_ok">下载均正常</string>
+    <string name="verify_downloads_result">已移除 %1$d 个损坏的下载</string>
 </resources>

@@ -14,6 +14,7 @@ fun BaseItem.toJson(): JSONObject = JSONObject()
     .put("parentId", parentId)
     .put("runTimeTicks", runTimeTicks)
     .put("trackNumber", trackNumber)
+    .put("discNumber", discNumber)
     .put("container", container)
     .put("hasImage", hasImage)
     .put("hasLyrics", hasLyrics)
@@ -38,6 +39,7 @@ fun baseItemFromJson(json: JSONObject): BaseItem {
         parentId = json.optString("parentId").takeIf { it.isNotBlank() },
         runTimeTicks = json.optLong("runTimeTicks").takeIf { it > 0 },
         trackNumber = json.optInt("trackNumber").takeIf { it > 0 },
+        discNumber = json.optInt("discNumber").takeIf { it > 0 },
         container = json.optString("container").takeIf { it.isNotBlank() },
         hasImage = json.optBoolean("hasImage", false),
         hasLyrics = json.optBoolean("hasLyrics", false),

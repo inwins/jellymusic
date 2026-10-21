@@ -176,6 +176,29 @@ class DownloadStore(
         }
     }
 
+    fun verifyDownloads(): Int {
+        var removed = 0
+        for (record in records.values.toList()) {
+            val uri = Uri.parse(record.uri)
+            val valid = when (uri.scheme) {
+                "file" -> File(uri.path ?: "").let { it.exists() && it.length() > 0 }
+                else -> runCatching {
+                    DocumentFile.fromSingleUri(context, uri)?.exists() == true
+                }.getOrDefault(false)
+            }
+            if (!valid) {
+                records.remove(record.item.id)
+                downloadedIds.remove(record.item.id)
+                errors[record.item.id] = context.getString(R.string.download_failed)
+                removed++
+            }
+        }
+        if (removed > 0) {
+            saveIndex()
+        }
+        return removed
+    }
+
     fun totalBytes(): Long {
         var total = 0L
         for (record in records.values) {

@@ -197,7 +197,7 @@ fun HomeTab(state: AppState) {
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
-                                    item.primaryArtist.orEmpty(),
+                                    item.trackArtist.orEmpty(),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.bodySmall,

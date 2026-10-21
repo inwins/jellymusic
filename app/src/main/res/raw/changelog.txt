@@ -1,5 +1,13 @@
 Jellyfin Music — Changelog
 
+2.2.0
+- Gapless and buffering tuning with stall recovery
+- Notification and Bluetooth metadata with album art fallback
+- Album artist and per-track artist shown correctly
+- Multi-disc albums sorted and labelled by disc and track
+- Download verification and repair
+- Re-sync when leaving offline mode
+
 2.1.0
 - Auto-download favorites, playlists and recently added
 - Persistent download queue with limited concurrency

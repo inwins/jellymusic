@@ -17,6 +17,7 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -92,6 +93,13 @@ class MusicPlayer(
 
     val exo: ExoPlayer = ExoPlayer.Builder(context)
         .setMediaSourceFactory(routingMediaSourceFactory)
+        .setLoadControl(
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(15_000, 60_000, 2_500, 5_000)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build(),
+        )
+        .setPauseAtEndOfMediaItems(false)
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -127,6 +135,8 @@ class MusicPlayer(
 
     private val resumePositions = mutableMapOf<String, Long>()
     private var fadeJob: Job? = null
+    private var bufferingSince = 0L
+    private var stallStage = 0
 
     private val prefs = appContext.getSharedPreferences("jellymusic_playback", Context.MODE_PRIVATE)
     private var tickCount = 0
@@ -152,6 +162,10 @@ class MusicPlayer(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 isBuffering = playbackState == Player.STATE_BUFFERING
+                if (playbackState != Player.STATE_BUFFERING) {
+                    bufferingSince = 0L
+                    stallStage = 0
+                }
                 if (playbackState == Player.STATE_ENDED) {
                     val item = current
                     if (!stopping && item != null && item.id != lastRecordedId) {
@@ -578,13 +592,35 @@ class MusicPlayer(
                         saveResumePosition()
                     }
                 }
+                val now = System.currentTimeMillis()
                 val sleepEnd = sleepTimerEndsAt
-                if (sleepEnd != null && System.currentTimeMillis() >= sleepEnd) {
+                if (sleepEnd != null && now >= sleepEnd) {
                     sleepTimerEndsAt = null
                     fadeTo(0f, settings.fadeMs.toLong()) {
                         exo.pause()
                         exo.volume = 1f
                     }
+                }
+                if (exo.playWhenReady &&
+                    exo.playbackState == Player.STATE_BUFFERING &&
+                    exo.mediaItemCount > 0
+                ) {
+                    if (bufferingSince == 0L) bufferingSince = now
+                    val stalledFor = now - bufferingSince
+                    if (stalledFor > 30_000L && stallStage == 0) {
+                        stallStage = 1
+                        exo.seekTo(exo.currentPosition)
+                    } else if (stalledFor > 60_000L && stallStage == 1) {
+                        stallStage = 2
+                        if (exo.hasNextMediaItem()) {
+                            exo.seekToNextMediaItem()
+                        } else {
+                            exo.pause()
+                        }
+                    }
+                } else if (!isBuffering) {
+                    bufferingSince = 0L
+                    stallStage = 0
                 }
                 delay(250)
             }
@@ -594,16 +630,18 @@ class MusicPlayer(
     private fun toMediaItem(item: BaseItem): MediaItem {
         val metadataBuilder = MediaMetadata.Builder()
             .setTitle(item.name)
-            .setArtist(item.primaryArtist)
+            .setArtist(item.trackArtist)
+            .setAlbumArtist(item.albumArtist)
             .setAlbumTitle(item.album)
+
+        val artworkId = if (item.hasImage) item.id else item.albumId
+        if (artworkId != null) {
+            api?.let { metadataBuilder.setArtworkUri(Uri.parse(it.imageUrl(artworkId, 600))) }
+        }
+
         val localUri = downloadStore?.uriFor(item.id)
         val streamingUrl = api?.streamUrl(item)
         if (localUri != null) {
-            if (item.hasImage) {
-                api?.let { a ->
-                    metadataBuilder.setArtworkUri(Uri.parse(a.imageUrl(item.id, 600)))
-                }
-            }
             return MediaItem.Builder()
                 .setMediaId(item.id)
                 .setUri(localUri)
@@ -611,10 +649,6 @@ class MusicPlayer(
                 .build()
         }
         if (streamingUrl != null) {
-            val a = api
-            if (a != null && item.hasImage) {
-                metadataBuilder.setArtworkUri(Uri.parse(a.imageUrl(item.id, 600)))
-            }
             return MediaItem.Builder()
                 .setMediaId(item.id)
                 .setUri(streamingUrl)

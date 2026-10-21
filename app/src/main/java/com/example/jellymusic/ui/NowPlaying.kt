@@ -126,7 +126,7 @@ fun MiniPlayerBar(state: AppState) {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        current.primaryArtist.orEmpty(),
+                        current.trackArtist.orEmpty(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
@@ -346,7 +346,7 @@ fun NowPlayingScreen(state: AppState) {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            listOfNotNull(current.primaryArtist, current.album).joinToString(" · "),
+            listOfNotNull(current.trackArtist, current.album).joinToString(" · "),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -552,7 +552,7 @@ private fun QueueList(
                         },
                     )
                     Text(
-                        item.primaryArtist.orEmpty(),
+                        item.trackArtist.orEmpty(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
