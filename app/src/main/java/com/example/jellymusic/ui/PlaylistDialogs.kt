@@ -4,7 +4,9 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.DownloadDone
@@ -22,6 +27,7 @@ import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -164,12 +170,45 @@ private fun TrackActionsDialog(state: AppState) {
     val downloading = state.downloads.progress[item.id] != null
     val downloadError = state.downloads.errors[item.id] != null
     val cached = state.streamCache.isCached(item.id)
+    val rating = state.ratings.rating(item.id)
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = { state.trackMenu = null },
         title = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
             Column {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    (1..5).forEach { star ->
+                        IconButton(
+                            onClick = {
+                                state.ratings.set(
+                                    item.id,
+                                    if (rating == star) 0 else star,
+                                )
+                            },
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Icon(
+                                if (star <= rating) {
+                                    Icons.Default.Star
+                                } else {
+                                    Icons.Default.StarBorder
+                                },
+                                contentDescription = stringResource(R.string.rating),
+                                tint = if (star <= rating) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
                 Text(
                     when {
                         downloaded -> stringResource(R.string.downloaded)
@@ -212,6 +251,20 @@ private fun TrackActionsDialog(state: AppState) {
                     text = stringResource(R.string.add_to_queue),
                 ) {
                     state.player.addToQueue(item)
+                    state.trackMenu = null
+                }
+                ActionRow(
+                    icon = { Icon(Icons.Default.Radio, contentDescription = null) },
+                    text = stringResource(R.string.instant_mix),
+                ) {
+                    val api = state.api
+                    if (api != null) {
+                        scope.launch {
+                            val mix = runCatching { api.getInstantMix(item.id) }
+                                .getOrDefault(emptyList())
+                            if (mix.isNotEmpty()) state.player.play(mix, 0)
+                        }
+                    }
                     state.trackMenu = null
                 }
                 ActionRow(

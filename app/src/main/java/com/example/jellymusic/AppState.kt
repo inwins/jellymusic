@@ -18,6 +18,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.example.jellymusic.data.AppSettings
 import com.example.jellymusic.data.AudioFeaturesStore
+import com.example.jellymusic.data.RatingStore
 import com.example.jellymusic.data.AuthHeaders
 import com.example.jellymusic.data.AutoDownloadScheduler
 import com.example.jellymusic.data.DiskCache
@@ -52,6 +53,7 @@ class AppState(private val context: Context) {
     val lyricsOverlay = LyricsOverlay(context)
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
+    val ratings = RatingStore(context)
     val localMusic = LocalMusicStore(context)
     val localPlaylists = LocalPlaylistStore(context)
     val searchHistory = SearchHistoryStore(context)

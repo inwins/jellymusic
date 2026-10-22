@@ -286,6 +286,16 @@ fun SettingsScreen(state: AppState) {
             }
             item {
                 SettingSwitchRow(
+                    title = stringResource(R.string.skip_silence),
+                    checked = state.settings.skipSilence,
+                    onCheckedChange = {
+                        state.settings.skipSilence = it
+                        state.player.applySkipSilence()
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
                     title = stringResource(R.string.normalize_volume),
                     checked = state.settings.normalizeVolume,
                     onCheckedChange = { state.settings.normalizeVolume = it },
@@ -757,6 +767,34 @@ fun SettingsScreen(state: AppState) {
             }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { state.navigate(Screen.SmartPlaylists) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Analytics,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.smart_playlists),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
             item {
                 Row(

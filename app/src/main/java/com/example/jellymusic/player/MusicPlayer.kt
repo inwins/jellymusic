@@ -174,6 +174,7 @@ class MusicPlayer(
     private var lastRecordedId: String? = null
 
     init {
+        exo.setSkipSilenceEnabled(settings.skipSilence)
         exo.setPlaybackParameters(PlaybackParameters(playbackSpeed))
         loadResumePositions()
 
@@ -290,6 +291,10 @@ class MusicPlayer(
         updateCurrent()
         positionMs = startPosition
         saveState()
+    }
+
+    fun applySkipSilence() {
+        exo.setSkipSilenceEnabled(settings.skipSilence)
     }
 
     fun toggle() {

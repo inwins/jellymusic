@@ -204,6 +204,7 @@
     <string name="crossfade">Crossfade</string>
     <string name="crossfade_off">Off</string>
     <string name="crossfade_seconds">%1$d s</string>
+    <string name="skip_silence">Skip silence</string>
     <string name="normalize_volume">Loudness normalization</string>
     <string name="report_playback">Report playback to server</string>
     <string name="fade_in_out">Fade in/out</string>
@@ -259,6 +260,12 @@
     <string name="online">Online</string>
     <string name="cached_tap_to_download">Cached, tap to download</string>
     <string name="sync_to_server">Saved to the Jellyfin server</string>
+    <string name="instant_mix">Instant mix</string>
+    <string name="smart_playlists">Smart playlists</string>
+    <string name="recent_played">Recently played</string>
+    <string name="most_played">Most played</string>
+    <string name="high_rated">High rated</string>
+    <string name="rating">Rating</string>
     <string name="edit_info">Edit info</string>
     <string name="title_label">Title</string>
     <string name="artist_label">Artist</string>

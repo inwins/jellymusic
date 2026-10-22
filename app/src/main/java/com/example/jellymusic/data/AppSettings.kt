@@ -74,6 +74,15 @@ class AppSettings(context: Context) {
             prefs.edit().putInt(KEY_CROSSFADE_MS, value).apply()
         }
 
+    private var skipSilenceState by mutableStateOf(prefs.getBoolean(KEY_SKIP_SILENCE, false))
+
+    var skipSilence: Boolean
+        get() = skipSilenceState
+        set(value) {
+            skipSilenceState = value
+            prefs.edit().putBoolean(KEY_SKIP_SILENCE, value).apply()
+        }
+
     private var normalizeState by mutableStateOf(prefs.getBoolean(KEY_NORMALIZE, false))
 
     var normalizeVolume: Boolean
@@ -278,6 +287,7 @@ class AppSettings(context: Context) {
         const val KEY_MANUAL_OFFLINE = "manual_offline"
         const val KEY_CROSSFADE_MS = "crossfade_ms"
         const val KEY_NORMALIZE = "normalize_volume"
+        const val KEY_SKIP_SILENCE = "skip_silence"
         const val KEY_REPORT_PLAYBACK = "report_playback"
         const val KEY_LYRICS_OFFSETS = "lyrics_offsets"
         const val KEY_ALBUM_SORT = "album_sort"

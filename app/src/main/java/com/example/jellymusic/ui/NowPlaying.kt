@@ -107,6 +107,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.palette.graphics.Palette
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -125,6 +126,7 @@ import com.example.jellymusic.jellyfin.LyricLine
 import com.example.jellymusic.player.MusicPlayer
 import com.example.jellymusic.player.PlayMode
 import kotlin.math.roundToInt
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.jellymusic.util.formatDuration
@@ -235,9 +237,26 @@ fun NowPlayingScreen(state: AppState) {
     )
     val artUrl = state.artworkUrl(current, 800)
     val lyricsOffset = state.settings.lyricsOffsetFor(current.id)
-    val accent = state.audioFeatures.get(current.id)?.let {
+    val paletteAccent by produceState<Color?>(initialValue = null, artUrl) {
+        val url = artUrl ?: return@produceState
+        value = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val request = coil.request.ImageRequest.Builder(context)
+                    .data(url)
+                    .allowHardware(false)
+                    .build()
+                val result = coil.Coil.imageLoader(context).execute(request)
+                val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                bitmap?.let { bmp ->
+                    Palette.from(bmp).generate().vibrantSwatch?.rgb?.let { Color(it) }
+                }
+            }.getOrNull()
+        }
+    }
+    val keyAccent = state.audioFeatures.get(current.id)?.let {
         Color.hsv(MusicTheory.camelotHue(it.keyIndex, it.minor), 0.55f, 0.95f)
-    } ?: MaterialTheme.colorScheme.primary
+    }
+    val accent = paletteAccent ?: keyAccent ?: MaterialTheme.colorScheme.primary
     val recordPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -429,6 +448,22 @@ fun NowPlayingScreen(state: AppState) {
                                     moreMenuOpen = false
                                     state.settings.visualizerStyle =
                                         (state.settings.visualizerStyle + 1) % 3
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.instant_mix)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    state.api?.let { api ->
+                                        scope.launch {
+                                            val mix = runCatching {
+                                                api.getInstantMix(current.id)
+                                            }.getOrDefault(emptyList())
+                                            if (mix.isNotEmpty()) {
+                                                state.player.play(mix, 0)
+                                            }
+                                        }
+                                    }
                                 },
                             )
                             DropdownMenuItem(

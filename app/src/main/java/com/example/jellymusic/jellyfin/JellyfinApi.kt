@@ -183,6 +183,37 @@ class JellyfinApi(
         ),
     )
 
+    suspend fun getInstantMix(itemId: String, limit: Int = 50): List<BaseItem> = items(
+        "/Items/$itemId/InstantMix",
+        mapOf(
+            "UserId" to (userId ?: ""),
+            "Limit" to limit.toString(),
+        ),
+    )
+
+    suspend fun getRecentlyPlayed(limit: Int = 50): List<BaseItem> = items(
+        "/Users/$userId/Items",
+        mapOf(
+            "Recursive" to "true",
+            "IncludeItemTypes" to "Audio",
+            "Filters" to "IsPlayed",
+            "SortBy" to "DatePlayed",
+            "SortOrder" to "Descending",
+            "Limit" to limit.toString(),
+        ),
+    )
+
+    suspend fun getMostPlayed(limit: Int = 50): List<BaseItem> = items(
+        "/Users/$userId/Items",
+        mapOf(
+            "Recursive" to "true",
+            "IncludeItemTypes" to "Audio",
+            "SortBy" to "PlayCount",
+            "SortOrder" to "Descending",
+            "Limit" to limit.toString(),
+        ),
+    )
+
     suspend fun getSimilar(itemId: String, limit: Int = 20): List<BaseItem> = items(
         "/Items/$itemId/Similar",
         mapOf(

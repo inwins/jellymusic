@@ -204,6 +204,7 @@
     <string name="crossfade">切歌淡入淡出</string>
     <string name="crossfade_off">关闭</string>
     <string name="crossfade_seconds">%1$d 秒</string>
+    <string name="skip_silence">跳过静音</string>
     <string name="normalize_volume">响度归一化</string>
     <string name="report_playback">上报播放状态到服务器</string>
     <string name="fade_in_out">淡入淡出</string>
@@ -259,6 +260,12 @@
     <string name="online">线上</string>
     <string name="cached_tap_to_download">已缓存，点击下载</string>
     <string name="sync_to_server">将同步保存到 Jellyfin 服务器</string>
+    <string name="instant_mix">即时电台</string>
+    <string name="smart_playlists">智能歌单</string>
+    <string name="recent_played">最近播放</string>
+    <string name="most_played">最常播放</string>
+    <string name="high_rated">我的高分</string>
+    <string name="rating">评分</string>
     <string name="edit_info">编辑信息</string>
     <string name="title_label">标题</string>
     <string name="artist_label">艺术家</string>
