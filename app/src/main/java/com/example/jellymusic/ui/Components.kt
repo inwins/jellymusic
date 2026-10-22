@@ -276,7 +276,7 @@ fun TrackRow(
                         modifier = Modifier.size(20.dp),
                     )
 
-                    cached -> Icon(
+                    cached && !downloadError -> Icon(
                         Icons.Default.CloudDone,
                         contentDescription = stringResource(R.string.cached_tap_to_download),
                         tint = MaterialTheme.colorScheme.secondary,

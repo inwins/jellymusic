@@ -2,6 +2,7 @@ package com.example.jellymusic.data
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.documentfile.provider.DocumentFile
@@ -60,6 +61,27 @@ class DownloadStore(
     init {
         loadIndex()
         loadPending()
+        cleanupStaleParts()
+    }
+
+    private fun cleanupStaleParts() {
+        scope.launch(Dispatchers.IO) {
+            val cutoff = System.currentTimeMillis() - 5 * 60 * 1000L
+            runCatching {
+                if (settings.downloadTreeUri == null) {
+                    privateDir.listFiles()?.forEach { f ->
+                        if (f.name.endsWith(".part") && f.lastModified() < cutoff) f.delete()
+                    }
+                } else {
+                    val tree = targetTree() ?: return@launch
+                    DocumentFile.fromTreeUri(context, tree)?.listFiles()?.forEach { d ->
+                        if (d.name?.endsWith(".part") == true && d.lastModified() < cutoff) {
+                            d.delete()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun pendingCount(): Int = pending.size
@@ -134,7 +156,7 @@ class DownloadStore(
             val name = fileName(item)
             val tempName = "$name.part"
             tempUri = withContext(Dispatchers.IO) { createDocument(tempName) }
-                ?: throw IllegalStateException(context.getString(R.string.download_cannot_create))
+            tempUri ?: throw IllegalStateException(context.getString(R.string.download_cannot_create))
             withContext(Dispatchers.IO) {
                 val output = openOutput(tempUri)
                     ?: throw IllegalStateException(context.getString(R.string.download_cannot_write))
@@ -312,10 +334,17 @@ class DownloadStore(
             if (file.exists()) file.delete()
             return Uri.fromFile(file)
         }
-        val tree = targetTree() ?: return null
-        val dir = DocumentFile.fromTreeUri(context, tree) ?: return null
+        val tree = targetTree()
+        if (tree == null) {
+            return null
+        }
+        val dir = DocumentFile.fromTreeUri(context, tree)
+        if (dir == null) {
+            return null
+        }
         dir.findFile(displayName)?.delete()
-        return dir.createFile(MIME_TYPE, displayName)?.uri
+        val created = dir.createFile(MIME_TYPE, displayName)
+        return created?.uri
     }
 
     private fun openOutput(uri: Uri): OutputStream? = when (uri.scheme) {
@@ -344,16 +373,18 @@ class DownloadStore(
             }
         }
 
-        val document = DocumentFile.fromSingleUri(context, tempUri)
-        if (document != null && document.renameTo(finalName)) {
-            return document.uri
-        }
+        // SingleDocumentFile.renameTo() throws UnsupportedOperationException; use the
+        // platform API directly, which the external-storage provider supports.
+        val renamedUri = runCatching {
+            DocumentsContract.renameDocument(context.contentResolver, tempUri, finalName)
+        }.getOrNull()
+        if (renamedUri != null) return renamedUri
 
         // Some providers do not support rename: create the final document and copy.
-        val tree = targetTree() ?: return tempUri
-        val dir = DocumentFile.fromTreeUri(context, tree) ?: return tempUri
+        val tree = targetTree() ?: return null
+        val dir = DocumentFile.fromTreeUri(context, tree) ?: return null
         dir.findFile(finalName)?.delete()
-        val finalDoc = dir.createFile(MIME_TYPE, finalName) ?: return tempUri
+        val finalDoc = dir.createFile(MIME_TYPE, finalName) ?: return null
         val copied = runCatching {
             context.contentResolver.openInputStream(tempUri)?.use { input ->
                 context.contentResolver.openOutputStream(finalDoc.uri)?.use { output ->
@@ -363,7 +394,7 @@ class DownloadStore(
         }.getOrDefault(false)
         if (!copied) {
             finalDoc.delete()
-            return tempUri
+            return null
         }
         deleteUri(tempUri)
         return finalDoc.uri
