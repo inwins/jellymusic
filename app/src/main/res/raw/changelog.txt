@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.17.5
+- All songs: pinyin-based A-Z index and letter sections for Chinese titles
+- Sort by name / artist / recently added with direction, favourites-only filter
+- All songs works offline, showing downloaded tracks
+
 2.17.4
 - Settings shows the Jellyfin server name/version/OS and the client version
 

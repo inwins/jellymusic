@@ -248,6 +248,7 @@
     <string name="auto_download_now">立即执行</string>
     <string name="sort">排序</string>
     <string name="sort_random">随机</string>
+    <string name="sort_artist">艺术家</string>
     <string name="sort_name">名称</string>
     <string name="sort_recent">最近添加</string>
     <string name="sort_year">年份</string>

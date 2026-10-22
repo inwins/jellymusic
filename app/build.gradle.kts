@@ -21,8 +21,8 @@ android {
         applicationId = "com.example.jellymusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 38
-        versionName = "2.17.4"
+        versionCode = 39
+        versionName = "2.17.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

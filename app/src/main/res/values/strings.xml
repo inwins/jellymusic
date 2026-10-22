@@ -248,6 +248,7 @@
     <string name="auto_download_now">Run now</string>
     <string name="sort">Sort</string>
     <string name="sort_random">Random</string>
+    <string name="sort_artist">Artist</string>
     <string name="sort_name">Name</string>
     <string name="sort_recent">Recently added</string>
     <string name="sort_year">Year</string>

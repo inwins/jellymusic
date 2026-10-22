@@ -387,10 +387,27 @@ fun PlayIconButton(onClick: () -> Unit) {
         )
     }
 }
+private val indexKeyCache = HashMap<String, Char>()
+
 fun alphabetIndexKey(name: String): Char {
-    val first = name.trim().firstOrNull() ?: return '#'
-    val upper = first.uppercaseChar()
-    return if (upper in 'A'..'Z') upper else '#'
+    val trimmed = name.trim()
+    if (trimmed.isEmpty()) return '#'
+    indexKeyCache[trimmed]?.let { return it }
+    val first = trimmed.first()
+    val key = if (first in 'A'..'Z' || first in 'a'..'z') {
+        first.uppercaseChar()
+    } else {
+        runCatching {
+            val transliterator = android.icu.text.Transliterator
+                .getInstance("Han-Latin; Latin-ASCII")
+            transliterator.transliterate(first.toString())
+                .firstOrNull { it in 'A'..'Z' || it in 'a'..'z' }
+                ?.uppercaseChar()
+        }.getOrNull() ?: '#'
+    }
+    if (indexKeyCache.size > 4000) indexKeyCache.clear()
+    indexKeyCache[trimmed] = key
+    return key
 }
 
 fun formatBytes(bytes: Long): String {

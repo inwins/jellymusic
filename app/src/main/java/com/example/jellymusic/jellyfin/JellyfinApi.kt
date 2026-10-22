@@ -420,13 +420,18 @@ class JellyfinApi(
         ),
     )
 
-    suspend fun getAllSongs(startIndex: Int, limit: Int): List<BaseItem> = items(
+    suspend fun getAllSongs(
+        startIndex: Int,
+        limit: Int,
+        sortBy: String = "SortName",
+        sortOrder: String = "Ascending",
+    ): List<BaseItem> = items(
         "/Users/$userId/Items",
         mapOf(
             "Recursive" to "true",
             "IncludeItemTypes" to "Audio",
-            "SortBy" to "SortName",
-            "SortOrder" to "Ascending",
+            "SortBy" to sortBy,
+            "SortOrder" to sortOrder,
             "StartIndex" to startIndex.toString(),
             "Limit" to limit.toString(),
         ),
