@@ -887,7 +887,9 @@ fun NowPlayingScreen(state: AppState) {
                         Text(stringResource(R.string.shuffle_remaining))
                     }
                     TextButton(onClick = {
-                        val playlist = state.localPlaylists.create("播放队列")
+                        val playlist = state.localPlaylists.playlists
+                            .firstOrNull { it.name == "播放队列" }
+                            ?: state.localPlaylists.create("播放队列")
                         player.queue.forEach { state.localPlaylists.addItem(playlist.id, it) }
                         Toast.makeText(
                             context,

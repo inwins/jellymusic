@@ -66,7 +66,7 @@ object MusicTheory {
                         current != null && scale.intervals.size < current.scale.intervals.size)
                 if (current == null || better) {
                     bestScore = score
-                    best = ScaleMatch(tonic, scale, score.coerceIn(0f, 1f))
+                    best = ScaleMatch(tonic, scale, inScale.coerceIn(0f, 1f))
                 }
             }
         }

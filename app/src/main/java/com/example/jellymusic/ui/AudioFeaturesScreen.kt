@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.data.AudioFeatures
 import com.example.jellymusic.jellyfin.BaseItem
+import com.example.jellymusic.util.TonePlayer
 import com.example.jellymusic.util.MusicTheory
 import kotlin.math.roundToInt
 
@@ -49,6 +51,10 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
     val error = state.audioFeatures.error.value
     val uri: Uri? = remember(item.id) {
         item.localUri?.let { Uri.parse(it) } ?: state.downloads.uriFor(item.id)
+    }
+    val tonePlayer = remember { TonePlayer() }
+    DisposableEffect(Unit) {
+        onDispose { tonePlayer.stop() }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -107,6 +113,21 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                                     }
                                     .orEmpty(),
                             )
+                            FeatureRow(
+                                stringResource(R.string.scale_confidence),
+                                "${(features.scaleConfidence * 100).roundToInt()}%",
+                            )
+                            TextButton(onClick = {
+                                val base = 60 + (((features.scaleTonic - 60) % 12) + 12) % 12
+                                val intervals = MusicTheory.SCALES
+                                    .firstOrNull { it.name == features.scaleName }
+                                    ?.intervals
+                                    ?: intArrayOf(0, 2, 4, 5, 7, 9, 11)
+                                val ascending = intervals.map { base + it }
+                                tonePlayer.play(ascending + ascending.reversed().drop(1))
+                            }) {
+                                Text(stringResource(R.string.preview_scale))
+                            }
                         }
                         FeatureRow(
                             stringResource(R.string.energy_label),
@@ -178,6 +199,11 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                                     .height(120.dp),
                             )
+                            TextButton(onClick = {
+                                tonePlayer.play(features.notes.take(32).map { it.midi })
+                            }) {
+                                Text(stringResource(R.string.preview_melody))
+                            }
                             Text(
                                 stringResource(R.string.jianpu_label) + ": " +
                                     features.notes.take(48).joinToString(" ") {

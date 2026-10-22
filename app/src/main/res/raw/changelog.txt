@@ -1,5 +1,11 @@
 Jellyfin Music — Changelog
 
+2.17.1
+- Fix: "Save as playlist" from the queue no longer creates duplicate playlists
+- Key/scale confidence now reports the in-key energy ratio (meaningful percentage)
+- Audition the recognised scale and melody (Play scale / Play melody)
+- Tighter melody pitch range and voicing threshold
+
 2.17.0
 - Listening stats dashboard (library size, total plays, top artists/albums, recently played)
 - Cover gestures: double-tap to play/pause, swipe up/down for next/previous

@@ -178,7 +178,16 @@ object AudioDsp {
             pitchHistogram = pitchHistogram,
             chords = buildChords(frameChroma, bpm, sampleRate),
             timeSignature = estimateTimeSignature(flux, bpm, sampleRate),
-            keyConfidence = keyConfidence,
+            keyConfidence = run {
+                val intervals = if (minor) {
+                    intArrayOf(0, 2, 3, 5, 7, 8, 10)
+                } else {
+                    intArrayOf(0, 2, 4, 5, 7, 9, 11)
+                }
+                var inKey = 0f
+                for (i in intervals) inKey += chromaNorm[(keyIndex + i) % 12]
+                inKey.coerceIn(0f, 1f)
+            },
             mfcc = if (frames > 0) {
                 mfccSum.map { (it / frames).toFloat() }
             } else {
@@ -288,9 +297,9 @@ object AudioDsp {
 
     private fun estimatePitch(mag: FloatArray, freqs: FloatArray): Pair<Float, Float> {
         var minBin = 1
-        while (minBin < freqs.size && freqs[minBin] < 100f) minBin++
+        while (minBin < freqs.size && freqs[minBin] < 120f) minBin++
         var maxBin = minBin
-        while (maxBin < freqs.size && freqs[maxBin] <= 1100f) maxBin++
+        while (maxBin < freqs.size && freqs[maxBin] <= 1000f) maxBin++
         if (minBin >= maxBin) return 0f to 0f
         var mean = 0f
         for (k in minBin until maxBin) mean += mag[k]
@@ -347,7 +356,7 @@ object AudioDsp {
         val frames = ArrayList<Frame>()
         for (i in filtered.indices) {
             val hz = filtered[i]
-            if (hz <= 0f || rms[i] < silence || salience[i] < 0.25f) continue
+            if (hz <= 0f || rms[i] < silence || salience[i] < 0.3f) continue
             var midi = MusicTheory.hzToMidi(hz)
             if (midi < 0) continue
             if (scalePcs != null) midi = snapToScale(midi, scalePcs)
