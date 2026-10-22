@@ -16,6 +16,23 @@ class DurationTest {
     }
 
     @Test
+    fun formatsZero() {
+        assertEquals("0:00", formatDuration(0L))
+    }
+
+    @Test
+    fun truncatesPartialSeconds() {
+        assertEquals("0:59", formatDuration(59_999L))
+        assertEquals("1:00", formatDuration(60_000L))
+        assertEquals("59:59", formatDuration(3_599_000L))
+    }
+
+    @Test
+    fun formatsMultiHour() {
+        assertEquals("10:00:00", formatDuration(36_000_000L))
+    }
+
+    @Test
     fun clampsNegativeValues() {
         assertEquals("0:00", formatDuration(-1_000L))
     }

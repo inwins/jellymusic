@@ -31,6 +31,7 @@
     <string name="tab_artists">Artists</string>
     <string name="tab_playlists">Playlists</string>
     <string name="tab_downloads">Downloads</string>
+    <string name="recommended">For you</string>
     <string name="recently_added">Recently added</string>
     <string name="favorite_songs">Favorite songs</string>
     <string name="no_playlists">No playlists</string>
@@ -47,6 +48,24 @@
 
     <string name="collapse">Collapse</string>
     <string name="lyrics">Lyrics</string>
+    <string name="estimate_note">Vocals/instrumental are estimates</string>
+    <string name="audio_features">Audio features</string>
+    <string name="analyze">Analyze</string>
+    <string name="analyzing">Analyzing…</string>
+    <string name="analysis_failed">Analysis failed</string>
+    <string name="need_download_first">Download or import this song first</string>
+    <string name="bpm">Tempo</string>
+    <string name="key_label">Key</string>
+    <string name="energy_label">Energy</string>
+    <string name="loudness_label">Loudness</string>
+    <string name="brightness_label">Brightness</string>
+    <string name="vocal_label">Vocals</string>
+    <string name="accompaniment_label">Instrumental</string>
+    <string name="beat_label">Beat strength</string>
+    <string name="similar_by_sound">Similar sound</string>
+    <string name="reanalyze">Re-analyze</string>
+    <string name="no_audio_features">No analyzed songs yet</string>
+    <string name="now_playing">Now playing</string>
     <string name="queue">Play queue</string>
     <string name="no_lyrics">No lyrics</string>
     <string name="exit_fullscreen_lyrics">Exit full-screen lyrics</string>
@@ -133,6 +152,7 @@
     <string name="delete_playlist_text">Delete this playlist? This cannot be undone.</string>
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="save">Save</string>
+    <string name="view_all">View all</string>
     <string name="all_songs">All songs</string>
     <string name="search_songs">Songs</string>
     <string name="search_albums">Albums</string>
@@ -179,6 +199,7 @@
     <string name="auto_download_max">Limit %1$d MB</string>
     <string name="auto_download_now">Run now</string>
     <string name="sort">Sort</string>
+    <string name="sort_random">Random</string>
     <string name="sort_name">Name</string>
     <string name="sort_recent">Recently added</string>
     <string name="sort_year">Year</string>
@@ -205,6 +226,12 @@
     <string name="cached">Cached</string>
     <string name="online">Online</string>
     <string name="cached_tap_to_download">Cached, tap to download</string>
+    <string name="local_music">Local music</string>
+    <string name="import_local_music">Import local folder</string>
+    <string name="rescan">Rescan</string>
+    <string name="scanning">Scanning…</string>
+    <string name="no_local_music">No local music yet</string>
+    <string name="local_music_count">%1$d local songs</string>
     <string name="downloaded_songs">Downloaded</string>
     <string name="cached_songs">Cached</string>
     <string name="no_cached_songs">No cached songs yet</string>

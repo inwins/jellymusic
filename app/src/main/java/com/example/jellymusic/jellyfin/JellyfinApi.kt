@@ -134,6 +134,15 @@ class JellyfinApi(
         ),
     )
 
+    suspend fun getSimilar(itemId: String, limit: Int = 20): List<BaseItem> = items(
+        "/Items/$itemId/Similar",
+        mapOf(
+            "UserId" to (userId ?: ""),
+            "Limit" to limit.toString(),
+            "IncludeItemTypes" to "Audio",
+        ),
+    )
+
     suspend fun getAlbums(
         startIndex: Int = 0,
         limit: Int = 100,

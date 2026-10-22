@@ -131,7 +131,7 @@ class LocalPlaylistStore(context: Context) {
                     }
                     val toAdd = playlist.items
                         .map { it.id }
-                        .filter { it !in playlist.syncedItemIds }
+                        .filter { it !in playlist.syncedItemIds && !it.startsWith("local:") }
                     if (toAdd.isNotEmpty()) {
                         api.addToPlaylist(serverId, toAdd)
                         playlist.syncedItemIds = playlist.syncedItemIds + toAdd

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +61,18 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
                 ),
             )
             val multiDisc = tracks.any { (it.discNumber ?: 1) > 1 }
-            LazyColumn(Modifier.fillMaxSize()) {
+            val listState = rememberLazyListState()
+            var didScroll by remember { mutableStateOf(false) }
+            LaunchedEffect(tracks.size, state.player.current?.id) {
+                if (!didScroll && tracks.isNotEmpty()) {
+                    val index = tracks.indexOfFirst { it.id == state.player.current?.id }
+                    if (index >= 0) {
+                        listState.animateScrollToItem(index + 1)
+                        didScroll = true
+                    }
+                }
+            }
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 item {
                     DetailHeader(
                         state = state,
@@ -144,7 +157,18 @@ fun PlaylistScreen(state: AppState, screen: Screen.Playlist) {
             if (tracks.isEmpty()) {
                 EmptyHint(stringResource(R.string.playlist_empty))
             } else {
-                LazyColumn(Modifier.fillMaxSize()) {
+                val listState = rememberLazyListState()
+                var didScroll by remember { mutableStateOf(false) }
+                LaunchedEffect(tracks.size, state.player.current?.id) {
+                    if (!didScroll && tracks.isNotEmpty()) {
+                        val index = tracks.indexOfFirst { it.id == state.player.current?.id }
+                        if (index >= 0) {
+                            listState.animateScrollToItem(index + 1)
+                            didScroll = true
+                        }
+                    }
+                }
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     item {
                         DetailHeader(
                             state = state,
@@ -248,7 +272,18 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
         if (items.isEmpty()) {
             EmptyHint(stringResource(R.string.playlist_empty))
         } else {
-            LazyColumn(Modifier.fillMaxSize()) {
+            val listState = rememberLazyListState()
+            var didScroll by remember { mutableStateOf(false) }
+            LaunchedEffect(items.size, state.player.current?.id) {
+                if (!didScroll && items.isNotEmpty()) {
+                    val index = items.indexOfFirst { it.id == state.player.current?.id }
+                    if (index >= 0) {
+                        listState.animateScrollToItem(index + 1)
+                        didScroll = true
+                    }
+                }
+            }
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 item {
                     DetailHeader(
                         state = state,

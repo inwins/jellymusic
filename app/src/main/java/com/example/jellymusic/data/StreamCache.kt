@@ -97,17 +97,16 @@ class StreamCache(context: Context, private val settings: AppSettings) {
         }
     }
 
-    fun keyFromUri(uri: Uri): String {
-        val segments = uri.pathSegments
-        val audioIndex = segments.indexOf("Audio")
-        val id = if (audioIndex >= 0) segments.getOrNull(audioIndex + 1) else null
-        val host = "${uri.host}:${uri.port}"
-        return if (id != null) "$host/$id" else uri.toString()
-    }
+    fun keyFromUri(uri: Uri): String = streamCacheKey(uri)
 
     private fun keyFor(itemId: String): String? {
         val host = serverHost ?: return null
         return "$host/$itemId"
+    }
+
+    fun playCount(itemId: String): Int {
+        val key = keyFor(itemId) ?: return 0
+        return entries[key]?.playCount ?: 0
     }
 
     fun isCached(itemId: String): Boolean {

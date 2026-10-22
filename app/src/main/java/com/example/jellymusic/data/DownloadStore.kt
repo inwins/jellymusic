@@ -66,16 +66,15 @@ class DownloadStore(
 
     private fun cleanupStaleParts() {
         scope.launch(Dispatchers.IO) {
-            val cutoff = System.currentTimeMillis() - 5 * 60 * 1000L
             runCatching {
                 if (settings.downloadTreeUri == null) {
                     privateDir.listFiles()?.forEach { f ->
-                        if (f.name.endsWith(".part") && f.lastModified() < cutoff) f.delete()
+                        if (f.name.endsWith(".part") && isStalePartFile(f.lastModified())) f.delete()
                     }
                 } else {
                     val tree = targetTree() ?: return@launch
                     DocumentFile.fromTreeUri(context, tree)?.listFiles()?.forEach { d ->
-                        if (d.name?.endsWith(".part") == true && d.lastModified() < cutoff) {
+                        if (d.name?.endsWith(".part") == true && isStalePartFile(d.lastModified())) {
                             d.delete()
                         }
                     }
@@ -153,7 +152,7 @@ class DownloadStore(
         var lastUpdate = 0L
         var tempUri: Uri? = null
         try {
-            val name = fileName(item)
+            val name = downloadFileName(item)
             val tempName = "$name.part"
             tempUri = withContext(Dispatchers.IO) { createDocument(tempName) }
             tempUri ?: throw IllegalStateException(context.getString(R.string.download_cannot_create))
@@ -286,7 +285,7 @@ class DownloadStore(
                 try {
                     withContext(Dispatchers.IO) {
                         val oldUri = Uri.parse(record.uri)
-                        val name = fileName(record.item)
+                        val name = downloadFileName(record.item)
                         val tempUri = createDocument("$name.part")
                             ?: throw IllegalStateException(context.getString(R.string.download_target_create_failed))
                         val input = openInput(oldUri)
@@ -421,16 +420,6 @@ class DownloadStore(
         }
     }
 
-    private fun fileName(item: BaseItem): String {
-        val ext = item.container
-            ?.substringBefore(',')
-            ?.substringBefore(' ')
-            ?.lowercase()
-            ?.takeIf { it in ALLOWED_EXTENSIONS }
-            ?: "audio"
-        return "${item.id}.$ext"
-    }
-
     // ---- index ----
 
     private fun loadIndex() {
@@ -442,7 +431,7 @@ class DownloadStore(
                 val item = itemFromJson(json)
                 val rawUri = json.optString("uri").ifBlank {
                     // Backward compatibility with the old directory-only schema.
-                    Uri.fromFile(File(privateDir, fileName(item))).toString()
+                    Uri.fromFile(File(privateDir, downloadFileName(item))).toString()
                 }
                 val uri = Uri.parse(rawUri)
                 if (exists(uri)) {
@@ -500,8 +489,5 @@ class DownloadStore(
     companion object {
         private const val KEY_PENDING = "pending_downloads"
         private const val MIME_TYPE = "application/octet-stream"
-        private val ALLOWED_EXTENSIONS = setOf(
-            "mp3", "flac", "m4a", "aac", "ogg", "opus", "wav", "wma", "ape", "alac", "m4b",
-        )
     }
 }

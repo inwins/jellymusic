@@ -17,11 +17,13 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.example.jellymusic.data.AppSettings
+import com.example.jellymusic.data.AudioFeaturesStore
 import com.example.jellymusic.data.AuthHeaders
 import com.example.jellymusic.data.AutoDownloadScheduler
 import com.example.jellymusic.data.DiskCache
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.FavoriteStore
+import com.example.jellymusic.data.LocalMusicStore
 import com.example.jellymusic.data.LocalPlaylistStore
 import com.example.jellymusic.data.SearchHistoryStore
 import com.example.jellymusic.data.SessionStore
@@ -48,6 +50,8 @@ class AppState(private val context: Context) {
     val lyricsOverlay = LyricsOverlay(context)
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
+    val localMusic = LocalMusicStore(context)
+    val audioFeatures = AudioFeaturesStore(context)
     val localPlaylists = LocalPlaylistStore(context)
     val searchHistory = SearchHistoryStore(context)
 
@@ -65,6 +69,7 @@ class AppState(private val context: Context) {
 
     var trackMenu by mutableStateOf<BaseItem?>(null)
     var addToPlaylistItem by mutableStateOf<BaseItem?>(null)
+    var searchRequest by mutableStateOf<String?>(null)
     val syncing = mutableStateOf(false)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -257,6 +262,9 @@ class AppState(private val context: Context) {
     }
 
     fun artworkUrl(item: BaseItem, size: Int): String? {
+        if (item.localUri != null) {
+            localMusic.artFile(item.id)?.let { return Uri.fromFile(it).toString() }
+        }
         val api = api ?: return null
         val imageId = when {
             item.hasImage -> item.id

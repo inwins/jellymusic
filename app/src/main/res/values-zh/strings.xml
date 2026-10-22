@@ -31,6 +31,7 @@
     <string name="tab_artists">艺术家</string>
     <string name="tab_playlists">歌单</string>
     <string name="tab_downloads">下载</string>
+    <string name="recommended">为你推荐</string>
     <string name="recently_added">最近添加</string>
     <string name="favorite_songs">收藏歌曲</string>
     <string name="no_playlists">暂无播放列表</string>
@@ -47,6 +48,24 @@
 
     <string name="collapse">收起</string>
     <string name="lyrics">歌词</string>
+    <string name="estimate_note">人声/伴奏为估算值</string>
+    <string name="audio_features">音频特征</string>
+    <string name="analyze">开始分析</string>
+    <string name="analyzing">分析中…</string>
+    <string name="analysis_failed">分析失败</string>
+    <string name="need_download_first">请先下载或导入该歌曲</string>
+    <string name="bpm">速度</string>
+    <string name="key_label">调性</string>
+    <string name="energy_label">能量</string>
+    <string name="loudness_label">响度</string>
+    <string name="brightness_label">明亮度</string>
+    <string name="vocal_label">人声</string>
+    <string name="accompaniment_label">伴奏</string>
+    <string name="beat_label">节拍强度</string>
+    <string name="similar_by_sound">音色相似</string>
+    <string name="reanalyze">重新分析</string>
+    <string name="no_audio_features">暂无已分析歌曲</string>
+    <string name="now_playing">正在播放</string>
     <string name="queue">播放队列</string>
     <string name="no_lyrics">暂无歌词</string>
     <string name="exit_fullscreen_lyrics">退出全屏歌词</string>
@@ -133,6 +152,7 @@
     <string name="delete_playlist_text">确定删除该歌单？此操作不可撤销。</string>
     <string name="remove_from_playlist">从歌单移除</string>
     <string name="save">保存</string>
+    <string name="view_all">查看全部</string>
     <string name="all_songs">全部歌曲</string>
     <string name="search_songs">歌曲</string>
     <string name="search_albums">专辑</string>
@@ -179,6 +199,7 @@
     <string name="auto_download_max">上限 %1$d MB</string>
     <string name="auto_download_now">立即执行</string>
     <string name="sort">排序</string>
+    <string name="sort_random">随机</string>
     <string name="sort_name">名称</string>
     <string name="sort_recent">最近添加</string>
     <string name="sort_year">年份</string>
@@ -205,6 +226,12 @@
     <string name="cached">已缓存</string>
     <string name="online">线上</string>
     <string name="cached_tap_to_download">已缓存，点击下载</string>
+    <string name="local_music">本地音乐</string>
+    <string name="import_local_music">导入本地音乐目录</string>
+    <string name="rescan">重新扫描</string>
+    <string name="scanning">扫描中…</string>
+    <string name="no_local_music">暂无本地音乐</string>
+    <string name="local_music_count">本地音乐 %1$d 首</string>
     <string name="downloaded_songs">已下载</string>
     <string name="cached_songs">已缓存</string>
     <string name="no_cached_songs">暂无缓存歌曲</string>

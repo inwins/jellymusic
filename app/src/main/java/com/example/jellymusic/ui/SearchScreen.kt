@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,14 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,30 +39,33 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.jellyfin.BaseItem
-import kotlinx.coroutines.delay
+
+private const val SEARCH_PAGE_SIZE = 200
+private const val SEARCH_MAX_ITEMS = 2000
 
 @Composable
 fun SearchScreen(state: AppState) {
-    var query by rememberSaveable { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf(state.searchRequest.orEmpty()) }
     var kind by rememberSaveable { mutableIntStateOf(0) }
-    var results by remember { mutableStateOf<List<BaseItem>?>(null) }
+    var songs by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
+    var albums by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
+    var artists by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
 
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        runCatching { focusRequester.requestFocus() }
+    LaunchedEffect(state.searchRequest) {
+        state.searchRequest?.let {
+            query = it
+            state.searchRequest = null
+        }
     }
 
     val kinds = listOf(
@@ -73,35 +74,69 @@ fun SearchScreen(state: AppState) {
         "MusicArtist" to stringResource(R.string.search_artists),
     )
 
-    LaunchedEffect(query, kind, retry) {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) {
-            results = null
-            loading = false
-            error = null
-            return@LaunchedEffect
+    LaunchedEffect(kind, retry) {
+        val alreadyLoaded = when (kind) {
+            0 -> songs.isNotEmpty()
+            1 -> albums.isNotEmpty()
+            else -> artists.isNotEmpty()
         }
-        if (state.isOffline) {
-            results = emptyList()
-            loading = false
-            error = null
-            return@LaunchedEffect
-        }
+        if (alreadyLoaded && retry == 0) return@LaunchedEffect
         loading = true
         error = null
-        delay(350)
         try {
-            val api = state.requireApi()
-            results = when (kind) {
-                0 -> api.searchSongs(trimmed)
-                1 -> api.search(trimmed, "MusicAlbum")
-                else -> api.searchArtists(trimmed)
+            if (state.isOffline) {
+                if (kind == 0) {
+                    songs = (state.downloads.downloadedItems() + state.localMusic.songs)
+                        .distinctBy { it.id }
+                }
+                return@LaunchedEffect
+            }
+            when (kind) {
+                0 -> {
+                    val all = mutableListOf<BaseItem>()
+                    var start = 0
+                    while (all.size < SEARCH_MAX_ITEMS) {
+                        val page = state.requireApi().getAllSongs(start, SEARCH_PAGE_SIZE)
+                        all.addAll(page)
+                        if (page.size < SEARCH_PAGE_SIZE) break
+                        start += page.size
+                    }
+                    songs = (all + state.localMusic.songs).distinctBy { it.id }
+                }
+
+                1 -> albums = state.requireApi().getAlbums(0, 500)
+                else -> artists = state.requireApi().getArtists(0, 500)
             }
         } catch (e: Exception) {
-            results = emptyList()
             error = e.message
         } finally {
             loading = false
+        }
+    }
+
+    val source = when (kind) {
+        0 -> songs
+        1 -> albums
+        else -> artists
+    }
+    val needle = query.trim()
+    val filtered = remember(source, needle, kind) {
+        if (needle.isEmpty()) {
+            source
+        } else {
+            source.filter { item ->
+                when (kind) {
+                    0 -> item.name.contains(needle, true) ||
+                        item.trackArtist?.contains(needle, true) == true ||
+                        item.album?.contains(needle, true) == true ||
+                        item.albumArtist?.contains(needle, true) == true
+
+                    1 -> item.name.contains(needle, true) ||
+                        item.albumArtist?.contains(needle, true) == true
+
+                    else -> item.name.contains(needle, true)
+                }
+            }
         }
     }
 
@@ -126,12 +161,11 @@ fun SearchScreen(state: AppState) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
-                onSearch = { state.searchHistory.add(query) },
+                onSearch = { if (query.isNotBlank()) state.searchHistory.add(query) },
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .focusRequester(focusRequester),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         )
 
         Row(
@@ -150,68 +184,14 @@ fun SearchScreen(state: AppState) {
         }
 
         when {
-            state.isOffline -> Box(
-                Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    stringResource(R.string.offline_hint),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            query.isBlank() -> {
-                val history = state.searchHistory.history
-                if (history.isEmpty()) {
-                    Box(
-                        Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            stringResource(R.string.search_hint),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    Column(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                stringResource(R.string.search_history),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.weight(1f),
-                            )
-                            TextButton(onClick = { state.searchHistory.clear() }) {
-                                Text(stringResource(R.string.clear_history))
-                            }
-                        }
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(history) { value ->
-                                SuggestionChip(
-                                    onClick = { query = value },
-                                    label = { Text(value) },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            loading -> Box(
+            loading && source.isEmpty() -> Box(
                 Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
 
-            error != null -> Column(
+            error != null && source.isEmpty() -> Column(
                 Modifier
                     .fillMaxSize()
                     .padding(24.dp),
@@ -224,51 +204,99 @@ fun SearchScreen(state: AppState) {
                 }
             }
 
-            results.isNullOrEmpty() -> Box(
-                Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    stringResource(R.string.search_no_results),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
             else -> {
-                val items = results ?: emptyList()
+                val history = state.searchHistory.history
                 LazyColumn(Modifier.fillMaxSize()) {
-                    if (kind == 0) {
-                        itemsIndexed(items) { index, item ->
+                    if (needle.isBlank() && history.isNotEmpty()) {
+                        item {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 8.dp, top = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    stringResource(R.string.search_history),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(onClick = { state.searchHistory.clear() }) {
+                                    Text(stringResource(R.string.clear_history))
+                                }
+                            }
+                            LazyRow(
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 16.dp,
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(history) { value ->
+                                    SuggestionChip(
+                                        onClick = { query = value },
+                                        label = { Text(value) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (state.isOffline && kind != 0) {
+                        item {
+                            EmptyHint(stringResource(R.string.offline_hint))
+                        }
+                    } else if (filtered.isEmpty()) {
+                        item {
+                            EmptyHint(
+                                stringResource(
+                                    if (needle.isBlank()) {
+                                        R.string.search_no_results
+                                    } else {
+                                        R.string.search_no_results
+                                    },
+                                ),
+                            )
+                        }
+                    } else if (kind == 0) {
+                        itemsIndexed(filtered) { index, item ->
                             val id = item.id
+                            val isLocal = item.localUri != null
                             TrackRow(
                                 item = item,
                                 index = index + 1,
                                 artworkUrl = state.artworkUrl(item, 120),
                                 onClick = {
-                                    state.searchHistory.add(query)
-                                    state.player.play(items, index)
+                                    if (needle.isNotBlank()) state.searchHistory.add(needle)
+                                    state.player.play(filtered, index)
                                 },
                                 showArtwork = true,
                                 isCurrent = state.player.current?.id == id,
-                                favorite = state.favorites.isFavorite(item),
-                                onToggleFavorite = { state.favorites.toggle(item) },
-                                downloaded = state.downloads.downloadedIds[id] == true,
-                                downloading = state.downloads.progress[id],
-                                downloadError = state.downloads.errors[id] != null,
-                        cached = state.streamCache.isCached(id),
-                                onDownload = {
-                                    state.api?.let { api -> state.downloads.download(api, item) }
+                                favorite = !isLocal && state.favorites.isFavorite(item),
+                                onToggleFavorite = if (isLocal) {
+                                    null
+                                } else {
+                                    ({ state.favorites.toggle(item) })
+                                },
+                                downloaded = !isLocal && state.downloads.downloadedIds[id] == true,
+                                downloading = if (isLocal) null else state.downloads.progress[id],
+                                downloadError = !isLocal &&
+                                    state.downloads.errors[id] != null,
+                                cached = !isLocal && state.streamCache.isCached(id),
+                                onDownload = if (isLocal) {
+                                    null
+                                } else {
+                                    ({ state.api?.let { api -> state.downloads.download(api, item) } })
                                 },
                                 onLongClick = { state.trackMenu = item },
                             )
                         }
                     } else {
-                        itemsIndexed(items) { _, item ->
+                        itemsIndexed(filtered) { _, item ->
                             Row(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        state.searchHistory.add(query)
+                                        if (needle.isNotBlank()) state.searchHistory.add(needle)
                                         if (kind == 1) {
                                             state.navigate(Screen.Album(item.id, item.name))
                                         } else {
@@ -299,12 +327,6 @@ fun SearchScreen(state: AppState) {
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
-                                Icon(
-                                    Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp),
-                                )
                             }
                         }
                     }

@@ -87,6 +87,17 @@ fun AllSongsScreen(state: AppState) {
         }
     }
 
+    var didScroll by remember { mutableStateOf(false) }
+    LaunchedEffect(items.size, state.player.current?.id) {
+        if (!didScroll && items.isNotEmpty()) {
+            val index = items.indexOfFirst { it.id == state.player.current?.id }
+            if (index >= 0) {
+                listState.animateScrollToItem(index + 1)
+                didScroll = true
+            }
+        }
+    }
+
     Column(Modifier.fillMaxSize()) {
         TopBar(stringResource(R.string.all_songs), onBack = { state.back() })
 

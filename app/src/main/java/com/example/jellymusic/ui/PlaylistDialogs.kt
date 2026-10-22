@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -46,6 +47,7 @@ fun GlobalDialogs(state: AppState) {
 @Composable
 private fun TrackActionsDialog(state: AppState) {
     val item = state.trackMenu ?: return
+    val isLocal = item.localUri != null
     val favorite = state.favorites.isFavorite(item)
     val downloaded = state.downloads.isDownloaded(item.id)
     val downloading = state.downloads.progress[item.id] != null
@@ -66,24 +68,26 @@ private fun TrackActionsDialog(state: AppState) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                ActionRow(
-                    icon = {
-                        Icon(
-                            if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = null,
-                        )
-                    },
-                    text = stringResource(if (favorite) R.string.unfavorite else R.string.favorite),
-                ) {
-                    state.favorites.toggle(item)
-                    state.trackMenu = null
-                }
-                ActionRow(
-                    icon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) },
-                    text = stringResource(R.string.add_to_playlist),
-                ) {
-                    state.addToPlaylistItem = item
-                    state.trackMenu = null
+                if (!isLocal) {
+                    ActionRow(
+                        icon = {
+                            Icon(
+                                if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = null,
+                            )
+                        },
+                        text = stringResource(if (favorite) R.string.unfavorite else R.string.favorite),
+                    ) {
+                        state.favorites.toggle(item)
+                        state.trackMenu = null
+                    }
+                    ActionRow(
+                        icon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) },
+                        text = stringResource(R.string.add_to_playlist),
+                    ) {
+                        state.addToPlaylistItem = item
+                        state.trackMenu = null
+                    }
                 }
                 ActionRow(
                     icon = { Icon(Icons.Default.QueuePlayNext, contentDescription = null) },
@@ -100,28 +104,37 @@ private fun TrackActionsDialog(state: AppState) {
                     state.trackMenu = null
                 }
                 ActionRow(
-                    icon = {
-                        Icon(
-                            if (downloaded) Icons.Default.DownloadDone else Icons.Default.Download,
-                            contentDescription = null,
-                        )
-                    },
-                    text = stringResource(
-                        when {
-                            downloading -> R.string.cancel_download
-                            downloaded -> R.string.delete_download
-                            downloadError -> R.string.retry_download
-                            else -> R.string.download
-                        },
-                    ),
+                    icon = { Icon(Icons.Default.GraphicEq, contentDescription = null) },
+                    text = stringResource(R.string.audio_features),
                 ) {
-                    when {
-                        downloading -> state.downloads.cancel(item)
-                        downloaded -> state.downloads.delete(item)
-                        downloadError -> state.api?.let { state.downloads.retry(it, item) }
-                        else -> state.api?.let { state.downloads.download(it, item) }
-                    }
+                    state.navigate(Screen.AudioFeatures(item))
                     state.trackMenu = null
+                }
+                if (!isLocal) {
+                    ActionRow(
+                        icon = {
+                            Icon(
+                                if (downloaded) Icons.Default.DownloadDone else Icons.Default.Download,
+                                contentDescription = null,
+                            )
+                        },
+                        text = stringResource(
+                            when {
+                                downloading -> R.string.cancel_download
+                                downloaded -> R.string.delete_download
+                                downloadError -> R.string.retry_download
+                                else -> R.string.download
+                            },
+                        ),
+                    ) {
+                        when {
+                            downloading -> state.downloads.cancel(item)
+                            downloaded -> state.downloads.delete(item)
+                            downloadError -> state.api?.let { state.downloads.retry(it, item) }
+                            else -> state.api?.let { state.downloads.download(it, item) }
+                        }
+                        state.trackMenu = null
+                    }
                 }
             }
         },

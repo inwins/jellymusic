@@ -1,6 +1,8 @@
 package com.example.jellymusic.ui
 
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -136,6 +140,28 @@ fun HomeTab(state: AppState) {
             HomeData(api.getLatest(30), api.getFavorites())
         }) { data ->
             val favorites = state.favorites.mergeFavorites(data.favorites)
+            var recommended by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
+            LaunchedEffect(data.favorites) {
+                val api = state.api ?: return@LaunchedEffect
+                val favoriteIds = favorites.map { it.id }.toSet()
+                val seeds = favorites
+                    .distinctBy { it.albumArtist ?: it.trackArtist ?: it.id }
+                    .shuffled()
+                    .take(3)
+                val result = LinkedHashMap<String, BaseItem>()
+                for (seed in seeds) {
+                    val similar = runCatching { api.getSimilar(seed.id, 15) }
+                        .getOrDefault(emptyList())
+                    for (item in similar) {
+                        if (item.id in favoriteIds) continue
+                        if (state.streamCache.playCount(item.id) >= 3) continue
+                        result[item.id] = item
+                        if (result.size >= 12) break
+                    }
+                    if (result.size >= 12) break
+                }
+                recommended = result.values.toList()
+            }
             LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     Row(
@@ -187,9 +213,22 @@ fun HomeTab(state: AppState) {
                     }
                 }
                 item {
-                    SectionTitle(stringResource(R.string.favorite_songs))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SectionTitle(stringResource(R.string.favorite_songs))
+                        Spacer(Modifier.weight(1f))
+                        if (favorites.size > 6) {
+                            TextButton(onClick = { state.navigate(Screen.Favorites) }) {
+                                Text(stringResource(R.string.view_all))
+                            }
+                        }
+                    }
                 }
-                itemsIndexed(favorites) { index, item ->
+                itemsIndexed(favorites.take(6)) { index, item ->
                     val id = item.id
                     TrackRow(
                         item = item,
@@ -209,6 +248,44 @@ fun HomeTab(state: AppState) {
                         },
                         onLongClick = { state.trackMenu = item },
                     )
+                }
+                if (recommended.isNotEmpty()) {
+                    item {
+                        SectionTitle(stringResource(R.string.recommended))
+                    }
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            itemsIndexed(recommended) { index, item ->
+                                Column(
+                                    Modifier
+                                        .width(140.dp)
+                                        .clickable { state.player.play(recommended, index) },
+                                ) {
+                                    FillArtwork(
+                                        state.artworkUrl(item, 400),
+                                        Modifier.fillMaxWidth(),
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        item.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        item.trackArtist.orEmpty(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -270,6 +347,14 @@ private enum class AlbumSort(
     YEAR("ProductionYear", "Descending", R.string.sort_year),
 }
 
+private enum class ArtistSort(
+    val sortBy: String,
+    val labelRes: Int,
+) {
+    NAME("SortName", R.string.sort_name),
+    RANDOM("Random", R.string.sort_random),
+}
+
 @Composable
 fun AlbumsTab(state: AppState) {
     if (state.isOffline) {
@@ -279,6 +364,8 @@ fun AlbumsTab(state: AppState) {
 
     val items = remember { mutableStateListOf<BaseItem>() }
     var sort by remember { mutableStateOf(AlbumSort.NAME) }
+    var descending by remember { mutableStateOf(false) }
+    var favoritesOnly by remember { mutableStateOf(false) }
     var startIndex by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var endReached by remember { mutableStateOf(false) }
@@ -295,7 +382,11 @@ fun AlbumsTab(state: AppState) {
                 startIndex = startIndex,
                 limit = LIST_PAGE_SIZE,
                 sortBy = sort.sortBy,
-                sortOrder = sort.sortOrder,
+                sortOrder = if (descending) {
+                    if (sort.sortOrder == "Ascending") "Descending" else "Ascending"
+                } else {
+                    sort.sortOrder
+                },
             )
             if (page.isEmpty()) {
                 endReached = true
@@ -312,7 +403,7 @@ fun AlbumsTab(state: AppState) {
         }
     }
 
-    LaunchedEffect(sort) {
+    LaunchedEffect(sort, descending) {
         items.clear()
         startIndex = 0
         endReached = false
@@ -354,12 +445,25 @@ fun AlbumsTab(state: AppState) {
                             text = { Text(stringResource(option.labelRes)) },
                             onClick = {
                                 sort = option
+                                descending = false
                                 sortMenu = false
                             },
                         )
                     }
                 }
             }
+            IconButton(onClick = { descending = !descending }) {
+                Icon(
+                    if (descending) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                    contentDescription = stringResource(R.string.sort),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            FilterChip(
+                selected = favoritesOnly,
+                onClick = { favoritesOnly = !favoritesOnly },
+                label = { Text(stringResource(R.string.favorite)) },
+            )
             Spacer(Modifier.weight(1f))
             if (loading) {
                 CircularProgressIndicator(
@@ -436,10 +540,14 @@ fun ArtistsTab(state: AppState) {
     }
 
     val items = remember { mutableStateListOf<BaseItem>() }
+    var sort by remember { mutableStateOf(ArtistSort.NAME) }
+    var descending by remember { mutableStateOf(false) }
+    var favoritesOnly by remember { mutableStateOf(false) }
     var startIndex by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var endReached by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var sortMenu by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
 
@@ -450,6 +558,8 @@ fun ArtistsTab(state: AppState) {
             val page = state.requireApi().getArtists(
                 startIndex = startIndex,
                 limit = LIST_PAGE_SIZE,
+                sortBy = sort.sortBy,
+                sortOrder = if (descending && sort != ArtistSort.RANDOM) "Descending" else "Ascending",
             )
             if (page.isEmpty()) {
                 endReached = true
@@ -466,7 +576,11 @@ fun ArtistsTab(state: AppState) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(sort, descending) {
+        items.clear()
+        startIndex = 0
+        endReached = false
+        error = null
         loadNext()
     }
 
@@ -483,14 +597,50 @@ fun ArtistsTab(state: AppState) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        if (loading) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                TextButton(onClick = { sortMenu = true }) {
+                    Text(
+                        stringResource(R.string.sort) + ": " + stringResource(sort.labelRes),
+                    )
+                }
+                DropdownMenu(
+                    expanded = sortMenu,
+                    onDismissRequest = { sortMenu = false },
+                ) {
+                    ArtistSort.values().forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(option.labelRes)) },
+                            onClick = {
+                                sort = option
+                                descending = false
+                                sortMenu = false
+                            },
+                        )
+                    }
+                }
+            }
+            if (sort != ArtistSort.RANDOM) {
+                IconButton(onClick = { descending = !descending }) {
+                    Icon(
+                        if (descending) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                        contentDescription = stringResource(R.string.sort),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            FilterChip(
+                selected = favoritesOnly,
+                onClick = { favoritesOnly = !favoritesOnly },
+                label = { Text(stringResource(R.string.favorite)) },
+            )
+            Spacer(Modifier.weight(1f))
+            if (loading) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
         }
@@ -506,6 +656,11 @@ fun ArtistsTab(state: AppState) {
                 }
             }
         } else {
+            val shownArtists = if (favoritesOnly) {
+                items.filter { state.favorites.isFavorite(it) }
+            } else {
+                items
+            }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 state = gridState,
@@ -514,7 +669,7 @@ fun ArtistsTab(state: AppState) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(items, key = { it.id }) { artist ->
+                items(shownArtists, key = { it.id }) { artist ->
                     CardItem(
                         item = artist,
                         artworkUrl = state.artworkUrl(artist, 400),
@@ -557,10 +712,11 @@ fun ArtistsTab(state: AppState) {
 fun PlaylistsTab(state: AppState) {
     var serverPlaylists by remember { mutableStateOf<List<BaseItem>?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var refresh by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(refresh) {
         serverPlaylists = try {
             state.requireApi().getPlaylists()
         } catch (_: Exception) {
@@ -768,12 +924,19 @@ private fun ServerPlaylistRow(
 
 @Composable
 fun DownloadsTab(state: AppState) {
-    var showCached by rememberSaveable { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableIntStateOf(0) }
     val downloadedMap = state.downloads.downloadedIds
     val revision = state.streamCache.revision.value
     val downloaded = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
     val cached = remember(revision, downloadedMap.toMap()) {
         state.streamCache.cachedItems().filter { !state.downloads.isDownloaded(it.id) }
+    }
+    val local = state.localMusic.songs
+    val context = LocalContext.current
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) state.localMusic.importFolder(uri)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -784,30 +947,111 @@ fun DownloadsTab(state: AppState) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             FilterChip(
-                selected = !showCached,
-                onClick = { showCached = false },
-                label = {
-                    Text(
-                        stringResource(R.string.downloaded_songs) + " (${downloaded.size})",
-                    )
-                },
+                selected = mode == 0,
+                onClick = { mode = 0 },
+                label = { Text(stringResource(R.string.downloaded_songs) + " (${downloaded.size})") },
             )
             FilterChip(
-                selected = showCached,
-                onClick = { showCached = true },
-                label = {
-                    Text(
-                        stringResource(R.string.cached_songs) + " (${cached.size})",
-                    )
-                },
+                selected = mode == 1,
+                onClick = { mode = 1 },
+                label = { Text(stringResource(R.string.cached_songs) + " (${cached.size})") },
+            )
+            FilterChip(
+                selected = mode == 2,
+                onClick = { mode = 2 },
+                label = { Text(stringResource(R.string.local_music) + " (${local.size})") },
             )
         }
 
-        val items = if (showCached) cached else downloaded
+        if (mode == 2) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionTitle(stringResource(R.string.local_music_count, local.size))
+                Spacer(Modifier.weight(1f))
+                if (state.localMusic.treeUri != null) {
+                    TextButton(
+                        onClick = { state.localMusic.rescan() },
+                        enabled = !state.localMusic.scanning.value,
+                    ) {
+                        Text(stringResource(R.string.rescan))
+                    }
+                }
+                TextButton(onClick = { importLauncher.launch(null) }) {
+                    Text(stringResource(R.string.import_local_music))
+                }
+            }
+            if (state.localMusic.scanning.value) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.scanning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            state.localMusic.lastError.value?.let { error ->
+                Text(
+                    error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+            if (local.isEmpty() && !state.localMusic.scanning.value) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        stringResource(R.string.no_local_music),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = { importLauncher.launch(null) }) {
+                        Text(stringResource(R.string.import_local_music))
+                    }
+                }
+                return@Column
+            }
+            LazyColumn(Modifier.fillMaxSize()) {
+                itemsIndexed(local) { index, item ->
+                    val id = item.id
+                    TrackRow(
+                        item = item,
+                        index = index + 1,
+                        artworkUrl = state.artworkUrl(item, 120),
+                        onClick = { state.player.play(local, index) },
+                        showArtwork = true,
+                        isCurrent = state.player.current?.id == id,
+                        favorite = false,
+                        onLongClick = { state.trackMenu = item },
+                    )
+                }
+            }
+            return@Column
+        }
+
+        val items = if (mode == 1) cached else downloaded
         if (items.isEmpty()) {
             EmptyHint(
                 stringResource(
-                    if (showCached) R.string.no_cached_songs else R.string.no_downloads_hint,
+                    if (mode == 1) R.string.no_cached_songs else R.string.no_downloads_hint,
                 ),
             )
             return@Column
@@ -822,14 +1066,14 @@ fun DownloadsTab(state: AppState) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     SectionTitle(
-                        if (showCached) {
+                        if (mode == 1) {
                             stringResource(R.string.cached_songs) + " " + items.size
                         } else {
                             stringResource(R.string.downloaded_count, items.size)
                         },
                     )
                     Spacer(Modifier.weight(1f))
-                    if (showCached) {
+                    if (mode == 1) {
                         TextButton(
                             onClick = {
                                 state.api?.let { api ->
@@ -853,12 +1097,12 @@ fun DownloadsTab(state: AppState) {
                     isCurrent = state.player.current?.id == id,
                     favorite = state.favorites.isFavorite(item),
                     onToggleFavorite = { state.favorites.toggle(item) },
-                    downloaded = !showCached,
-                    cached = showCached,
+                    downloaded = mode == 0,
+                    cached = mode == 1,
                     downloading = state.downloads.progress[id],
                     downloadError = state.downloads.errors[id] != null,
                     onDownload = {
-                        if (showCached) {
+                        if (mode == 1) {
                             state.api?.let { api -> state.downloads.download(api, item) }
                         } else {
                             state.downloads.delete(item)

@@ -20,3 +20,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
       - name: Build and test
         run: ./gradlew assembleDebug testDebugUnitTest --console=plain
+      - name: Upload unit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: |
+            app/build/reports/tests/testDebugUnitTest
+            app/build/test-results/testDebugUnitTest

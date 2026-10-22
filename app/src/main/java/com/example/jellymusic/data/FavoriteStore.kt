@@ -62,6 +62,12 @@ class FavoriteStore(context: Context) {
         val ops = synchronized(lock) { pending.toList() }
         if (ops.isEmpty()) return true
         for (op in ops) {
+            if (op.itemId.startsWith("local:")) {
+                synchronized(lock) {
+                    pending.removeAll { it.itemId == op.itemId }
+                }
+                continue
+            }
             try {
                 api.setFavorite(op.itemId, op.favorite)
                 synchronized(lock) {

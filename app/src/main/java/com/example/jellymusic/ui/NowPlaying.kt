@@ -5,10 +5,25 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -91,9 +106,11 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
+import com.example.jellymusic.data.AudioFeatures
 import com.example.jellymusic.jellyfin.LyricLine
 import com.example.jellymusic.player.MusicPlayer
 import com.example.jellymusic.player.PlayMode
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.jellymusic.util.formatDuration
@@ -161,20 +178,15 @@ fun MiniPlayerBar(state: AppState) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NowPlayingScreen(state: AppState) {
     val player = state.player
     val current = player.current ?: return
 
-    var tab by rememberSaveable { mutableIntStateOf(0) }
     var lyricsFullScreen by rememberSaveable { mutableStateOf(false) }
     var dragPosition by remember { mutableStateOf<Float?>(null) }
-    val sliderPosition = dragPosition ?: player.positionMs.toFloat()
-    val duration = player.durationMs.coerceAtLeast(1L)
-    val downloaded = state.downloads.isDownloaded(current.id)
-    val downloadProgress = state.downloads.progress[current.id]
-    val favorite = state.favorites.isFavorite(current)
-    val context = LocalContext.current
+    var showQueue by remember { mutableStateOf(false) }
     var moreMenuOpen by remember { mutableStateOf(false) }
     var showSleepDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -196,21 +208,49 @@ fun NowPlayingScreen(state: AppState) {
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                        MaterialTheme.colorScheme.background,
+    val sliderPosition = dragPosition ?: player.positionMs.toFloat()
+    val duration = player.durationMs.coerceAtLeast(1L)
+    val downloaded = state.downloads.isDownloaded(current.id)
+    val downloadProgress = state.downloads.progress[current.id]
+    val downloadError = state.downloads.errors[current.id] != null
+    val favorite = state.favorites.isFavorite(current)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val artUrl = state.artworkUrl(current, 800)
+    val downloadLabel = when {
+        downloadProgress != null -> R.string.cancel_download
+        downloaded -> R.string.delete_download
+        downloadError -> R.string.retry_download
+        else -> R.string.download
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        if (artUrl != null) {
+            AsyncImage(
+                model = artUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(60.dp)
+                    .alpha(0.30f),
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.78f),
+                            MaterialTheme.colorScheme.background,
+                        ),
                     ),
                 ),
-            )
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+        )
+
         if (lyricsFullScreen) {
             FullScreenLyrics(
                 title = current.name,
@@ -222,330 +262,489 @@ fun NowPlayingScreen(state: AppState) {
                 onFontScaleChange = { state.settings.lyricsFontScale = it },
                 onClose = { lyricsFullScreen = false },
                 onSeek = { player.seekTo(it) },
-                modifier = Modifier.fillMaxSize(),
-            )
-            return@Column
-        }
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = { state.back() }) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.collapse))
-            }
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { state.favorites.toggle(current) }) {
-                Icon(
-                    if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = stringResource(
-                        if (favorite) R.string.unfavorite else R.string.favorite,
-                    ),
-                    tint = if (favorite) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
-            IconButton(onClick = { state.addToPlaylistItem = current }) {
-                Icon(
-                    Icons.Default.PlaylistAdd,
-                    contentDescription = stringResource(R.string.add_to_playlist),
-                )
-            }
-            Box {
-                IconButton(onClick = { moreMenuOpen = true }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.more),
-                    )
-                }
-                DropdownMenu(
-                    expanded = moreMenuOpen,
-                    onDismissRequest = { moreMenuOpen = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sleep_timer)) },
-                        onClick = {
-                            moreMenuOpen = false
-                            showSleepDialog = true
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(R.string.speed) + ": " +
-                                    stringResource(
-                                        R.string.speed_value,
-                                        formatSpeed(player.playbackSpeed),
-                                    ),
-                            )
-                        },
-                        onClick = {
-                            moreMenuOpen = false
-                            showSpeedDialog = true
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.ab_repeat)) },
-                        trailingIcon = {
-                            if (player.repeatA != null) {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        },
-                        onClick = {
-                            moreMenuOpen = false
-                            showAbDialog = true
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.desktop_lyrics)) },
-                        trailingIcon = {
-                            if (state.lyricsOverlay.enabled) {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        },
-                        onClick = {
-                            moreMenuOpen = false
-                            if (state.lyricsOverlay.enabled) {
-                                state.lyricsOverlay.hide()
-                            } else if (Settings.canDrawOverlays(context)) {
-                                state.toggleDesktopLyrics()
-                            } else {
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(
-                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                            Uri.parse("package:${context.packageName}"),
-                                        ),
-                                    )
-                                }
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.desktop_lyrics_permission),
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            }
-                        },
-                    )
-                }
-            }
-            IconButton(
-                onClick = {
-                    when {
-                        downloadProgress != null -> state.downloads.cancel(current)
-                        downloaded -> state.downloads.delete(current)
-                        state.downloads.errors[current.id] != null ->
-                            state.api?.let { state.downloads.retry(it, current) }
-                        else -> state.api?.let { state.downloads.download(it, current) }
-                    }
-                },
-            ) {
-                when {
-                    downloadProgress != null -> CircularProgressIndicator(
-                        progress = if (downloadProgress < 0f) 0f else downloadProgress,
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                    )
-
-                    downloaded -> Icon(
-                        Icons.Default.DownloadDone,
-                        contentDescription = stringResource(R.string.delete_download),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-
-                    else -> Icon(Icons.Default.Download, contentDescription = stringResource(R.string.download))
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        BoxWithConstraints(
-            Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            val side = minOf(maxWidth, maxHeight, 320.dp)
-            Artwork(state.artworkUrl(current, 800), side, 16.dp)
-        }
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            current.name,
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            listOfNotNull(current.trackArtist, current.album).distinct().joinToString(" · "),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(Modifier.height(12.dp))
-        Slider(
-            value = sliderPosition.coerceIn(0f, duration.toFloat()),
-            onValueChange = { dragPosition = it },
-            valueRange = 0f..duration.toFloat(),
-            onValueChangeFinished = {
-                player.seekTo((dragPosition ?: 0f).toLong())
-                dragPosition = null
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(Modifier.fillMaxWidth()) {
-            Text(
-                formatDuration(sliderPosition.toLong()),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                formatDuration(duration),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        val sleepEnd = player.sleepTimerEndsAt
-        val sleepRemaining = sleepEnd?.let { (it - nowMs).coerceAtLeast(0L) }
-        val pointA = player.repeatA
-        val pointB = player.repeatB
-        if (sleepRemaining != null || player.sleepAtEndOfTrack || player.playbackSpeed != 1f ||
-            (pointA != null && pointB != null)
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (sleepRemaining != null && sleepRemaining > 0L) {
-                    Text(
-                        stringResource(R.string.sleep_remaining, formatDuration(sleepRemaining)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                } else if (player.sleepAtEndOfTrack) {
-                    Text(
-                        stringResource(R.string.sleep_end_of_track_active),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                if (player.playbackSpeed != 1f) {
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        stringResource(R.string.speed_value, formatSpeed(player.playbackSpeed)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (pointA != null && pointB != null) {
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        "A-B ${formatDuration(pointA)}–${formatDuration(pointB)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = {
-                    player.cyclePlayMode()
-                    val label = when (player.playMode) {
-                        PlayMode.SEQUENTIAL -> R.string.play_mode_sequential
-                        PlayMode.LIST_LOOP -> R.string.play_mode_list_loop
-                        PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
-                        PlayMode.SHUFFLE -> R.string.play_mode_shuffle
-                    }
-                    Toast.makeText(context, context.getString(label), Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier.size(48.dp),
-            ) {
-                val icon = when (player.playMode) {
-                    PlayMode.SEQUENTIAL -> Icons.Default.PlaylistPlay
-                    PlayMode.LIST_LOOP -> Icons.Default.Repeat
-                    PlayMode.SINGLE_LOOP -> Icons.Default.RepeatOne
-                    PlayMode.SHUFFLE -> Icons.Default.Shuffle
-                }
-                val label = when (player.playMode) {
-                    PlayMode.SEQUENTIAL -> R.string.play_mode_sequential
-                    PlayMode.LIST_LOOP -> R.string.play_mode_list_loop
-                    PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
-                    PlayMode.SHUFFLE -> R.string.play_mode_shuffle
-                }
-                Icon(
-                    icon,
-                    contentDescription = stringResource(label),
-                    tint = if (player.playMode == PlayMode.SEQUENTIAL) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                )
-            }
-            IconButton(onClick = { player.previous() }, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous), modifier = Modifier.size(40.dp))
-            }
-            IconButton(
-                onClick = { player.toggle() },
                 modifier = Modifier
-                    .size(72.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-            ) {
-                Icon(
-                    if (player.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = stringResource(R.string.play_pause),
-                    modifier = Modifier.size(44.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-            IconButton(onClick = { player.next() }, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.next), modifier = Modifier.size(40.dp))
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        TabRow(selectedTabIndex = tab) {
-            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.lyrics)) })
-            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.queue)) })
-        }
-
-        if (tab == 0) {
-            LyricsView(
-                lyrics = lyrics,
-                positionMs = player.positionMs,
-                offsetMs = state.settings.lyricsOffsetMs,
-                fontScale = state.settings.lyricsFontScale,
-                fullScreen = false,
-                onExpand = { lyricsFullScreen = true },
-                onSeekLine = {},
-                modifier = Modifier.weight(1.5f),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp),
             )
         } else {
-            QueueList(
-                player = player,
-                modifier = Modifier.weight(1.5f),
-            )
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    IconButton(
+                        onClick = { state.back() },
+                        modifier = Modifier.align(Alignment.CenterStart),
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = stringResource(R.string.collapse),
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.now_playing),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                    Box(Modifier.align(Alignment.CenterEnd)) {
+                        IconButton(onClick = { moreMenuOpen = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.more),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = moreMenuOpen,
+                            onDismissRequest = { moreMenuOpen = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(downloadLabel)) },
+                                leadingIcon = {
+                                    if (downloadProgress != null) {
+                                        CircularProgressIndicator(
+                                            progress = if (downloadProgress < 0f) 0f else downloadProgress,
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    } else {
+                                        Icon(
+                                            if (downloaded) Icons.Default.DownloadDone else Icons.Default.Download,
+                                            contentDescription = null,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    when {
+                                        downloadProgress != null -> state.downloads.cancel(current)
+                                        downloaded -> state.downloads.delete(current)
+                                        downloadError -> state.api?.let { state.downloads.retry(it, current) }
+                                        else -> state.api?.let { state.downloads.download(it, current) }
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.add_to_playlist)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PlaylistAdd, contentDescription = null)
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    state.addToPlaylistItem = current
+                                },
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.sleep_timer)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    showSleepDialog = true
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(R.string.speed) + ": " +
+                                            stringResource(
+                                                R.string.speed_value,
+                                                formatSpeed(player.playbackSpeed),
+                                            ),
+                                    )
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    showSpeedDialog = true
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.ab_repeat)) },
+                                trailingIcon = {
+                                    if (player.repeatA != null) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    showAbDialog = true
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.audio_features)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    state.navigate(Screen.AudioFeatures(current))
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.desktop_lyrics)) },
+                                trailingIcon = {
+                                    if (state.lyricsOverlay.enabled) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    if (state.lyricsOverlay.enabled) {
+                                        state.lyricsOverlay.hide()
+                                    } else if (Settings.canDrawOverlays(context)) {
+                                        state.toggleDesktopLyrics()
+                                    } else {
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(
+                                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                    Uri.parse("package:${context.packageName}"),
+                                                ),
+                                            )
+                                        }
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.desktop_lyrics_permission),
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Column(
+                        Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 44.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            current.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                        )
+                        val artist = current.trackArtist?.takeIf { it.isNotBlank() }
+                        val album = current.album?.takeIf { it.isNotBlank() }
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (artist != null) {
+                                Text(
+                                    artist,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .clickable {
+                                            state.searchRequest = artist
+                                            state.navigate(Screen.Search)
+                                        },
+                                )
+                            }
+                            if (artist != null && album != null) {
+                                Text(
+                                    " · ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (album != null) {
+                                Text(
+                                    album,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .clickable {
+                                            state.searchRequest = album
+                                            state.navigate(Screen.Search)
+                                        },
+                                )
+                            }
+                        }
+                        state.audioFeatures.get(current.id)?.let { f ->
+                            Text(
+                                "${f.bpm.roundToInt()} BPM · ${AudioFeatures.keyName(f)} · " +
+                                    stringResource(R.string.energy_label) +
+                                    " ${(f.energy * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                onClick = { state.favorites.toggle(current) },
+                                onLongClick = { state.addToPlaylistItem = current },
+                            )
+                            .padding(12.dp),
+                    ) {
+                        Icon(
+                            if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = stringResource(
+                                if (favorite) R.string.unfavorite else R.string.favorite,
+                            ),
+                            tint = if (favorite) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                ) { page ->
+                    when (page) {
+                        0 -> CoverPage(artUrl) {
+                            scope.launch { pagerState.animateScrollToPage(1) }
+                        }
+
+                        else -> LyricsView(
+                            lyrics = lyrics,
+                            positionMs = player.positionMs,
+                            offsetMs = state.settings.lyricsOffsetMs,
+                            fontScale = state.settings.lyricsFontScale,
+                            fullScreen = false,
+                            onExpand = { lyricsFullScreen = true },
+                            onSeekLine = {},
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                        )
+                    }
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    repeat(2) { index ->
+                        val selected = pagerState.currentPage == index
+                        Box(
+                            Modifier
+                                .size(32.dp)
+                                .clickable {
+                                    scope.launch { pagerState.animateScrollToPage(index) }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(if (selected) 8.dp else 6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                                        },
+                                    ),
+                            )
+                        }
+                    }
+                }
+
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                ) {
+                    Slider(
+                        value = sliderPosition.coerceIn(0f, duration.toFloat()),
+                        onValueChange = { dragPosition = it },
+                        valueRange = 0f..duration.toFloat(),
+                        onValueChangeFinished = {
+                            player.seekTo((dragPosition ?: 0f).toLong())
+                            dragPosition = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(
+                            formatDuration(sliderPosition.toLong()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            formatDuration(duration),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    val sleepEnd = player.sleepTimerEndsAt
+                    val sleepRemaining = sleepEnd?.let { (it - nowMs).coerceAtLeast(0L) }
+                    val pointA = player.repeatA
+                    val pointB = player.repeatB
+                    if (sleepRemaining != null || player.sleepAtEndOfTrack ||
+                        player.playbackSpeed != 1f || (pointA != null && pointB != null)
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (sleepRemaining != null && sleepRemaining > 0L) {
+                                Text(
+                                    stringResource(R.string.sleep_remaining, formatDuration(sleepRemaining)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else if (player.sleepAtEndOfTrack) {
+                                Text(
+                                    stringResource(R.string.sleep_end_of_track_active),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            if (player.playbackSpeed != 1f) {
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.speed_value, formatSpeed(player.playbackSpeed)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (pointA != null && pointB != null) {
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    "A-B ${formatDuration(pointA)}–${formatDuration(pointB)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val modeIcon = when (player.playMode) {
+                            PlayMode.SEQUENTIAL -> Icons.Default.PlaylistPlay
+                            PlayMode.LIST_LOOP -> Icons.Default.Repeat
+                            PlayMode.SINGLE_LOOP -> Icons.Default.RepeatOne
+                            PlayMode.SHUFFLE -> Icons.Default.Shuffle
+                        }
+                        val modeLabel = when (player.playMode) {
+                            PlayMode.SEQUENTIAL -> R.string.play_mode_sequential
+                            PlayMode.LIST_LOOP -> R.string.play_mode_list_loop
+                            PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
+                            PlayMode.SHUFFLE -> R.string.play_mode_shuffle
+                        }
+                        IconButton(
+                            onClick = {
+                                player.cyclePlayMode()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(modeLabel),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                            modifier = Modifier.size(44.dp),
+                        ) {
+                            Icon(
+                                modeIcon,
+                                contentDescription = stringResource(modeLabel),
+                                tint = if (player.playMode == PlayMode.SEQUENTIAL) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                        IconButton(onClick = { player.previous() }, modifier = Modifier.size(52.dp)) {
+                            Icon(
+                                Icons.Default.SkipPrevious,
+                                contentDescription = stringResource(R.string.previous),
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
+                        IconButton(
+                            onClick = { player.toggle() },
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        ) {
+                            Icon(
+                                if (player.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = stringResource(R.string.play_pause),
+                                modifier = Modifier.size(38.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                        IconButton(onClick = { player.next() }, modifier = Modifier.size(52.dp)) {
+                            Icon(
+                                Icons.Default.SkipNext,
+                                contentDescription = stringResource(R.string.next),
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
+                        IconButton(onClick = { showQueue = true }, modifier = Modifier.size(44.dp)) {
+                            Icon(
+                                Icons.Default.QueueMusic,
+                                contentDescription = stringResource(R.string.queue),
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
         }
-        Spacer(Modifier.height(4.dp))
+    }
+
+    if (showQueue) {
+        ModalBottomSheet(
+            onDismissRequest = { showQueue = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxHeight(0.72f)
+                    .padding(horizontal = 8.dp),
+            ) {
+                Text(
+                    stringResource(R.string.queue),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                )
+                QueueList(player = player, modifier = Modifier.weight(1f))
+            }
+        }
     }
 
     if (showSleepDialog) {
@@ -651,6 +850,25 @@ fun NowPlayingScreen(state: AppState) {
 }
 
 @Composable
+private fun CoverPage(artUrl: String?, onShowLyrics: () -> Unit) {
+    BoxWithConstraints(
+        Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        val side = minOf(maxWidth * 0.82f, maxHeight * 0.96f, 360.dp)
+        Box(
+            Modifier
+                .size(side)
+                .shadow(18.dp, RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .clickable(onClick = onShowLyrics),
+        ) {
+            Artwork(artUrl, side, 20.dp)
+        }
+    }
+}
+
+@Composable
 private fun QueueList(
     player: MusicPlayer,
     modifier: Modifier = Modifier,
@@ -660,6 +878,17 @@ private fun QueueList(
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var dragDelta by remember { mutableFloatStateOf(0f) }
     var targetIndex by remember { mutableStateOf<Int?>(null) }
+    var didScroll by remember { mutableStateOf(false) }
+
+    LaunchedEffect(player.current?.id, player.queue.size) {
+        if (!didScroll && player.queue.isNotEmpty()) {
+            val index = player.queue.indexOfFirst { it.id == player.current?.id }
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+                didScroll = true
+            }
+        }
+    }
 
     LazyColumn(state = listState, modifier = modifier) {
         itemsIndexed(player.queue) { index, item ->

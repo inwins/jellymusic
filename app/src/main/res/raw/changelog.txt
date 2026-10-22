@@ -1,5 +1,18 @@
 Jellyfin Music — Changelog
 
+2.8.0
+- Import a local music folder (SAF): scan songs with metadata and embedded cover art, play offline
+- Local music is included in search
+- On-device audio analysis: tempo, key, energy, loudness, brightness, vocal/instrumental estimate, beat strength
+- "Similar sound" recommendations from analyzed tracks
+- "Add to playlist" merged into the favorite button (long-press)
+- Tap the artist or album on the Now Playing screen to search
+- Search lists all songs first, then filters as you type
+- Albums/artists: sort direction, random artists, favorites-only filter
+- Auto-scroll to the currently playing track when opening a list
+- Home shows only the first 6 favorites with "View all"; new "For you" recommendations that exclude favorites and frequently played songs
+- Refresh server playlists after a manual sync
+
 2.7.1
 - Fix downloads not completing when using a custom download folder (SAF rename failure)
 - Download failures now show an error instead of staying on the "cached" icon

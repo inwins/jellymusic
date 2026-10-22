@@ -9,6 +9,8 @@ sealed class Screen {
     data object NowPlaying : Screen()
     data object Search : Screen()
     data object AllSongs : Screen()
+    data object Favorites : Screen()
+    data class AudioFeatures(val item: com.example.jellymusic.jellyfin.BaseItem) : Screen()
     data object Genres : Screen()
     data object Folders : Screen()
     data class Folder(val id: String, val name: String) : Screen()

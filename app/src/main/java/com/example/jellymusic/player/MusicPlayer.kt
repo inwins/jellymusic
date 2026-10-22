@@ -672,6 +672,14 @@ class MusicPlayer(
             api?.let { metadataBuilder.setArtworkUri(Uri.parse(it.imageUrl(artworkId, 600))) }
         }
 
+        val importedUri = item.localUri?.let { Uri.parse(it) }
+        if (importedUri != null) {
+            return MediaItem.Builder()
+                .setMediaId(item.id)
+                .setUri(importedUri)
+                .setMediaMetadata(metadataBuilder.build())
+                .build()
+        }
         val localUri = downloadStore?.uriFor(item.id)
         val streamingUrl = api?.streamUrl(item)
         if (localUri != null) {

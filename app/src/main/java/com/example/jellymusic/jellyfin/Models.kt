@@ -22,6 +22,7 @@ data class BaseItem(
     val collectionType: String? = null,
     val playlistItemId: String? = null,
     val childCount: Int? = null,
+    val localUri: String? = null,
 ) {
     val durationMs: Long? get() = runTimeTicks?.div(10_000)
     val primaryArtist: String? get() = albumArtist ?: artists.firstOrNull()
