@@ -150,6 +150,15 @@ class AppSettings(context: Context) {
             prefs.edit().putInt(KEY_AUTO_MAX_MB, value).apply()
         }
 
+    private var visualizerState by mutableStateOf(prefs.getBoolean(KEY_VISUALIZER, false))
+
+    var visualizerEnabled: Boolean
+        get() = visualizerState
+        set(value) {
+            visualizerState = value
+            prefs.edit().putBoolean(KEY_VISUALIZER, value).apply()
+        }
+
     private var manualOfflineState by mutableStateOf(prefs.getBoolean(KEY_MANUAL_OFFLINE, false))
 
     var manualOffline: Boolean
@@ -197,6 +206,7 @@ class AppSettings(context: Context) {
         const val KEY_AUTO_WIFI_ONLY = "auto_download_wifi_only"
         const val KEY_AUTO_MAX_MB = "auto_download_max_mb"
         const val KEY_MANUAL_OFFLINE = "manual_offline"
+        const val KEY_VISUALIZER = "visualizer_enabled"
         const val KEY_LYRICS_FONT_SCALE = "lyrics_font_scale"
         const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
         const val DEFAULT_CACHE_LIMIT_MB = 512

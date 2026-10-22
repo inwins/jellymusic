@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.9.0
+- Real-time spectrum visualizer on Now Playing: a radial ring around the cover plus spectrum bars, coloured by the song key
+- Music theory: Camelot key wheel, relative key, diatonic chords and a 12-note chroma chart
+- "Harmonic match" list and "build harmonic queue" based on Camelot distance and tempo compatibility
+
 2.8.0
 - Import a local music folder (SAF): scan songs with metadata and embedded cover art, play offline
 - Local music is included in search

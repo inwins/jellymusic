@@ -98,6 +98,8 @@ class MusicPlayer(
         }
     }
 
+    val audioSessionId: Int get() = exo.audioSessionId
+
     val exo: ExoPlayer = ExoPlayer.Builder(context)
         .setMediaSourceFactory(routingMediaSourceFactory)
         .setLoadControl(

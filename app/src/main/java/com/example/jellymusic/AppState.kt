@@ -47,6 +47,7 @@ class AppState(private val context: Context) {
 
     val streamCache = StreamCache(context, settings)
     val player = MusicPlayer(context, streamCache, settings)
+    val visualizer = com.example.jellymusic.player.VisualizerController(context)
     val lyricsOverlay = LyricsOverlay(context)
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)

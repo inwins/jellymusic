@@ -49,6 +49,13 @@
     <string name="collapse">Collapse</string>
     <string name="lyrics">Lyrics</string>
     <string name="estimate_note">Vocals/instrumental are estimates</string>
+    <string name="camelot_label">Camelot</string>
+    <string name="relative_key">Relative key</string>
+    <string name="diatonic_chords">Diatonic chords</string>
+    <string name="harmonic_match">Harmonic match</string>
+    <string name="generate_harmonic_mix">Build harmonic queue</string>
+    <string name="visualizer">Visualizer</string>
+    <string name="visualizer_permission">Microphone permission is needed for the visualizer</string>
     <string name="audio_features">Audio features</string>
     <string name="analyze">Analyze</string>
     <string name="analyzing">Analyzing…</string>

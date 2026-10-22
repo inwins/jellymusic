@@ -18,6 +18,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.core.content.ContextCompat
+import com.example.jellymusic.util.MusicTheory
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
@@ -218,6 +231,36 @@ fun NowPlayingScreen(state: AppState) {
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val artUrl = state.artworkUrl(current, 800)
+    val accent = state.audioFeatures.get(current.id)?.let {
+        Color.hsv(MusicTheory.camelotHue(it.keyIndex, it.minor), 0.55f, 0.95f)
+    } ?: MaterialTheme.colorScheme.primary
+    val recordPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            state.settings.visualizerEnabled = true
+        } else {
+            Toast.makeText(
+                context,
+                context.getString(R.string.visualizer_permission),
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+    LaunchedEffect(
+        state.settings.visualizerEnabled,
+        player.isPlaying,
+        player.current?.id,
+    ) {
+        if (state.settings.visualizerEnabled && player.isPlaying) {
+            state.visualizer.start(player.audioSessionId)
+        } else {
+            state.visualizer.stop()
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { state.visualizer.stop() }
+    }
     val downloadLabel = when {
         downloadProgress != null -> R.string.cancel_download
         downloaded -> R.string.delete_download
@@ -384,6 +427,30 @@ fun NowPlayingScreen(state: AppState) {
                                 },
                             )
                             DropdownMenuItem(
+                                text = { Text(stringResource(R.string.visualizer)) },
+                                trailingIcon = {
+                                    if (state.settings.visualizerEnabled) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    if (state.settings.visualizerEnabled) {
+                                        state.settings.visualizerEnabled = false
+                                        state.visualizer.stop()
+                                    } else if (
+                                        ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.RECORD_AUDIO,
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        state.settings.visualizerEnabled = true
+                                    } else {
+                                        recordPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
                                 text = { Text(stringResource(R.string.desktop_lyrics)) },
                                 trailingIcon = {
                                     if (state.lyricsOverlay.enabled) {
@@ -521,7 +588,12 @@ fun NowPlayingScreen(state: AppState) {
                         .fillMaxWidth(),
                 ) { page ->
                     when (page) {
-                        0 -> CoverPage(artUrl) {
+                        0 -> CoverPage(
+                            artUrl = artUrl,
+                            bands = state.visualizer.bands.value,
+                            accent = accent,
+                            showVisualizer = state.settings.visualizerEnabled,
+                        ) {
                             scope.launch { pagerState.animateScrollToPage(1) }
                         }
 
@@ -850,20 +922,111 @@ fun NowPlayingScreen(state: AppState) {
 }
 
 @Composable
-private fun CoverPage(artUrl: String?, onShowLyrics: () -> Unit) {
-    BoxWithConstraints(
+private fun CoverPage(
+    artUrl: String?,
+    bands: FloatArray,
+    accent: Color,
+    showVisualizer: Boolean,
+    onShowLyrics: () -> Unit,
+) {
+    Column(
         Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val side = minOf(maxWidth * 0.82f, maxHeight * 0.96f, 360.dp)
-        Box(
+        BoxWithConstraints(
             Modifier
-                .size(side)
-                .shadow(18.dp, RoundedCornerShape(20.dp))
-                .clip(RoundedCornerShape(20.dp))
-                .clickable(onClick = onShowLyrics),
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
         ) {
-            Artwork(artUrl, side, 20.dp)
+            val side = minOf(maxWidth * 0.82f, maxHeight * 0.9f, 360.dp)
+            Box(
+                Modifier.size(side * 1.5f),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (showVisualizer) {
+                    SpectrumRing(
+                        bands = bands,
+                        accent = accent,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Box(
+                    Modifier
+                        .size(side)
+                        .shadow(18.dp, RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable(onClick = onShowLyrics),
+                ) {
+                    Artwork(artUrl, side, 20.dp)
+                }
+            }
+        }
+        if (showVisualizer) {
+            SpectrumBars(
+                bands = bands,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .height(48.dp),
+            )
+            Spacer(Modifier.height(6.dp))
+        }
+    }
+}
+
+@Composable
+private fun SpectrumRing(
+    bands: FloatArray,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val count = bands.size
+        if (count == 0) return@Canvas
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val inner = size.minDimension / 3f
+        val maxLength = inner * 0.5f
+        for (i in 0 until count) {
+            val angle = (i.toFloat() / count) * 2f * PI.toFloat() - (PI / 2).toFloat()
+            val magnitude = bands.getOrElse(i) { 0f }.coerceIn(0f, 1f)
+            val length = 3f + magnitude * maxLength
+            val startX = center.x + cos(angle) * inner
+            val startY = center.y + sin(angle) * inner
+            val endX = center.x + cos(angle) * (inner + length)
+            val endY = center.y + sin(angle) * (inner + length)
+            drawLine(
+                color = accent.copy(alpha = 0.25f + 0.75f * magnitude),
+                start = Offset(startX, startY),
+                end = Offset(endX, endY),
+                strokeWidth = 4f,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpectrumBars(
+    bands: FloatArray,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        for (i in bands.indices) {
+            val magnitude = bands[i].coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height((magnitude * 46).dp + 2.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent.copy(alpha = 0.3f + 0.7f * magnitude)),
+            )
         }
     }
 }

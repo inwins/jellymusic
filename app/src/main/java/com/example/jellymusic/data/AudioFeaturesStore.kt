@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import com.example.jellymusic.jellyfin.BaseItem
+import com.example.jellymusic.util.MusicTheory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,6 +57,48 @@ class AudioFeaturesStore(context: Context) {
         features.remove(itemId)
         items.remove(itemId)
         save()
+    }
+
+    fun harmonicallySimilar(item: BaseItem, limit: Int = 20): List<Pair<BaseItem, Float>> {
+        val seed = features[item.id] ?: return emptyList()
+        return features.entries
+            .asSequence()
+            .filter { it.key != item.id }
+            .mapNotNull { entry ->
+                val other = items[entry.key] ?: return@mapNotNull null
+                val score = MusicTheory.harmonicScore(
+                    seed.keyIndex, seed.minor, seed.bpm,
+                    entry.value.keyIndex, entry.value.minor, entry.value.bpm,
+                )
+                other to score
+            }
+            .sortedByDescending { it.second }
+            .take(limit)
+            .toList()
+    }
+
+    /** Greedy harmonic-mixing order: each next track is the most compatible with the previous. */
+    fun harmonicOrder(item: BaseItem, limit: Int = 30): List<BaseItem> {
+        val seed = features[item.id] ?: return listOf(item)
+        val pool = features.entries
+            .asSequence()
+            .filter { it.key != item.id }
+            .mapNotNull { entry -> items[entry.key]?.let { it to entry.value } }
+            .toMutableList()
+        val ordered = mutableListOf(item)
+        var current = seed
+        while (pool.isNotEmpty() && ordered.size < limit) {
+            val best = pool.maxByOrNull {
+                MusicTheory.harmonicScore(
+                    current.keyIndex, current.minor, current.bpm,
+                    it.second.keyIndex, it.second.minor, it.second.bpm,
+                )
+            } ?: break
+            pool.remove(best)
+            ordered.add(best.first)
+            current = best.second
+        }
+        return ordered
     }
 
     fun similar(item: BaseItem, limit: Int = 20): List<BaseItem> {

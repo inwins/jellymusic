@@ -49,6 +49,13 @@
     <string name="collapse">收起</string>
     <string name="lyrics">歌词</string>
     <string name="estimate_note">人声/伴奏为估算值</string>
+    <string name="camelot_label">Camelot</string>
+    <string name="relative_key">关系调</string>
+    <string name="diatonic_chords">调内和弦</string>
+    <string name="harmonic_match">和声相近</string>
+    <string name="generate_harmonic_mix">生成和谐混音队列</string>
+    <string name="visualizer">可视化</string>
+    <string name="visualizer_permission">可视化需要麦克风权限</string>
     <string name="audio_features">音频特征</string>
     <string name="analyze">开始分析</string>
     <string name="analyzing">分析中…</string>
