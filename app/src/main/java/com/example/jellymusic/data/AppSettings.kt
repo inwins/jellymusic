@@ -47,7 +47,7 @@ class AppSettings(context: Context) {
             prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
         }
 
-    private var dynamicColorState by mutableStateOf(prefs.getBoolean(KEY_DYNAMIC_COLOR, false))
+    private var dynamicColorState by mutableStateOf(prefs.getBoolean(KEY_DYNAMIC_COLOR, true))
 
     var dynamicColor: Boolean
         get() = dynamicColorState

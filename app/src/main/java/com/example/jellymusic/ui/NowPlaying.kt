@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Check
@@ -75,6 +76,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -106,13 +108,20 @@ fun MiniPlayerBar(state: AppState) {
         0f
     }
 
-    Surface(tonalElevation = 4.dp) {
+    Surface(
+        tonalElevation = 6.dp,
+        shadowElevation = 2.dp,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
         Column {
             LinearProgressIndicator(
                 progress = fraction,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp),
+                    .height(3.dp),
             )
             Row(
                 Modifier
@@ -121,7 +130,7 @@ fun MiniPlayerBar(state: AppState) {
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Artwork(state.artworkUrl(current, 160), 44.dp, 6.dp)
+                Artwork(state.artworkUrl(current, 160), 44.dp, 8.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -190,6 +199,14 @@ fun NowPlayingScreen(state: AppState) {
     Column(
         Modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                        MaterialTheme.colorScheme.background,
+                    ),
+                ),
+            )
             .statusBarsPadding()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -367,7 +384,7 @@ fun NowPlayingScreen(state: AppState) {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            listOfNotNull(current.trackArtist, current.album).joinToString(" · "),
+            listOfNotNull(current.trackArtist, current.album).distinct().joinToString(" · "),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

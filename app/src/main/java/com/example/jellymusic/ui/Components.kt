@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -127,30 +128,54 @@ fun TopBar(title: String, onBack: () -> Unit) {
 }
 
 @Composable
+fun FillArtwork(url: String?, modifier: Modifier = Modifier, cornerRadius: Dp = 14.dp) {
+    val shape = RoundedCornerShape(cornerRadius)
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Default.MusicNote,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+            modifier = Modifier.fillMaxSize(0.35f),
+        )
+        if (url != null) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    }
+}
+
+@Composable
 fun Artwork(url: String?, size: Dp, cornerRadius: Dp = 8.dp) {
     val shape = RoundedCornerShape(cornerRadius)
-    if (url != null) {
-        AsyncImage(
-            model = url,
+    Box(
+        Modifier
+            .size(size)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Default.MusicNote,
             contentDescription = null,
-            modifier = Modifier
-                .size(size)
-                .clip(shape),
-            contentScale = ContentScale.Crop,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+            modifier = Modifier.size(size * 0.4f),
         )
-    } else {
-        Box(
-            Modifier
-                .size(size)
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Default.MusicNote,
+        if (url != null) {
+            AsyncImage(
+                model = url,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(size * 0.4f),
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
             )
         }
     }
@@ -304,9 +329,7 @@ fun CardItem(
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
-        Box(Modifier.fillMaxWidth()) {
-            Artwork(artworkUrl, 160.dp, cornerRadius = 12.dp)
-        }
+        FillArtwork(artworkUrl, Modifier.fillMaxWidth(), cornerRadius = 14.dp)
         Spacer(Modifier.height(6.dp))
         Text(
             item.name,

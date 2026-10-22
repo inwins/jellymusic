@@ -6,10 +6,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.example.jellymusic.AppState
+import com.example.jellymusic.R
 
 @Composable
 fun AppRoot(state: AppState) {
@@ -57,7 +70,31 @@ fun MainScaffold(state: AppState) {
             if (showMiniPlayer) {
                 MiniPlayerBar(state)
             }
+            if (current == Screen.Home) {
+                HomeBottomBar(state)
+            }
         }
     }
     GlobalDialogs(state)
+}
+
+@Composable
+private fun HomeBottomBar(state: AppState) {
+    val items = listOf(
+        Triple(Icons.Default.Home, R.string.tab_home, 0),
+        Triple(Icons.Default.Album, R.string.tab_albums, 1),
+        Triple(Icons.Default.Person, R.string.tab_artists, 2),
+        Triple(Icons.Default.PlaylistPlay, R.string.tab_playlists, 3),
+        Triple(Icons.Default.Download, R.string.tab_downloads, 4),
+    )
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+        items.forEach { (icon, label, index) ->
+            NavigationBarItem(
+                selected = state.homeTab == index,
+                onClick = { state.homeTab = index },
+                icon = { Icon(icon, contentDescription = stringResource(label)) },
+                label = { Text(stringResource(label)) },
+            )
+        }
+    }
 }

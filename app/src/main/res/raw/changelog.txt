@@ -1,5 +1,13 @@
 Jellyfin Music — Changelog
 
+2.7.0
+- Offline mode (manual or automatic) shows only local downloads; no connection error or retry button
+- New bottom navigation bar with icons
+- Album/artist covers fill their cards, with rounded corners and a placeholder
+- Floating rounded mini player
+- Gradient background on the Now Playing screen
+- Dynamic color enabled by default on Android 12+
+
 2.6.3
 - Manual offline mode no longer shows "cannot reach server" or a retry button
 - Offline mode shows local downloads directly

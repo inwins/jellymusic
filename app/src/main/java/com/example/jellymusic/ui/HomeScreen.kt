@@ -76,15 +76,6 @@ private data class HomeData(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(state: AppState) {
-    val tab = state.homeTab
-    val tabs = listOf(
-        stringResource(R.string.tab_home),
-        stringResource(R.string.tab_albums),
-        stringResource(R.string.tab_artists),
-        stringResource(R.string.tab_playlists),
-        stringResource(R.string.tab_downloads),
-    )
-
     Column(Modifier.fillMaxSize()) {
         CenterAlignedTopAppBar(
             title = { Text(stringResource(R.string.app_name)) },
@@ -103,15 +94,6 @@ fun HomeScreen(state: AppState) {
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
         )
-        TabRow(selectedTabIndex = tab) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = tab == index,
-                    onClick = { state.homeTab = index },
-                    text = { Text(title) },
-                )
-            }
-        }
         if (state.isOffline) {
             Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
                 Text(
@@ -124,7 +106,7 @@ fun HomeScreen(state: AppState) {
                 )
             }
         }
-        when (tab) {
+        when (state.homeTab) {
             0 -> HomeTab(state)
             1 -> AlbumsTab(state)
             2 -> ArtistsTab(state)
@@ -139,7 +121,7 @@ fun HomeTab(state: AppState) {
     var refresh by remember { mutableIntStateOf(0) }
 
     if (state.isOffline) {
-        OfflineHome(state, onRetry = { refresh++ })
+        OfflineHome(state)
         return
     }
 
@@ -233,8 +215,7 @@ fun HomeTab(state: AppState) {
 }
 
 @Composable
-fun OfflineHome(state: AppState, onRetry: () -> Unit) {
-    val manualOffline = state.settings.manualOffline
+fun OfflineHome(state: AppState) {
     val downloadedMap = state.downloads.downloadedIds
     val items = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
 
@@ -246,51 +227,17 @@ fun OfflineHome(state: AppState, onRetry: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            if (manualOffline) {
-                Text(
-                    stringResource(R.string.no_downloaded_songs),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Text(
-                    stringResource(R.string.cannot_reach_server),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    stringResource(R.string.no_downloaded_songs),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-            }
+            Text(
+                stringResource(R.string.no_downloaded_songs),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         return
     }
 
     LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            if (manualOffline) {
-                SectionTitle(stringResource(R.string.downloaded_count, items.size))
-            } else {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 12.dp, end = 4.dp, top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(R.string.offline_showing_downloads),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-                }
-            }
-        }
+        item { SectionTitle(stringResource(R.string.downloaded_count, items.size)) }
         itemsIndexed(items) { index, item ->
             val id = item.id
             TrackRow(
