@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
@@ -54,6 +55,114 @@ fun GlobalDialogs(state: AppState) {
     TrackActionsDialog(state)
     AddToPlaylistDialog(state)
     LocalEditDialog(state)
+    AudioInfoDialog(state)
+}
+
+private data class AudioInfo(
+    val codec: String,
+    val bitrate: String,
+    val sampleRate: String,
+    val duration: String,
+    val size: String,
+    val local: Boolean,
+)
+
+@Composable
+private fun AudioInfoDialog(state: AppState) {
+    val item = state.audioInfoItem ?: return
+    val context = LocalContext.current
+    val info by androidx.compose.runtime.produceState<AudioInfo?>(initialValue = null, item.id) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val uri = item.localUri?.let { android.net.Uri.parse(it) }
+                ?: state.downloads.uriFor(item.id)
+            loadAudioInfo(context, item, uri)
+        }
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { state.audioInfoItem = null },
+        title = { Text(stringResource(R.string.audio_info)) },
+        text = {
+            Column {
+                Text(item.name, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.size(8.dp))
+                val current = info
+                if (current == null) {
+                    Text(stringResource(R.string.analyzing))
+                } else {
+                    InfoText("Codec", current.codec)
+                    InfoText(stringResource(R.string.bitrate), current.bitrate)
+                    InfoText(stringResource(R.string.sample_rate), current.sampleRate)
+                    InfoText(stringResource(R.string.duration_label), current.duration)
+                    InfoText(stringResource(R.string.file_size), current.size)
+                    if (!current.local) {
+                        Text(
+                            stringResource(R.string.audio_features) + ": " +
+                                stringResource(R.string.online),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { state.audioInfoItem = null }) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun InfoText(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(value, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+private fun loadAudioInfo(
+    context: android.content.Context,
+    item: com.example.jellymusic.jellyfin.BaseItem,
+    uri: android.net.Uri?,
+): AudioInfo {
+    var codec = item.container.orEmpty()
+    var bitrate = "-"
+    var sampleRate = "-"
+    var duration = item.durationMs?.let { com.example.jellymusic.util.formatDuration(it) } ?: "-"
+    var size = "-"
+    var local = false
+    if (uri != null) {
+        local = true
+        val retriever = android.media.MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+                ?.let { codec = it.substringAfter('/').uppercase() }
+            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)
+                ?.toLongOrNull()
+                ?.let { bitrate = "${it / 1000} kbps" }
+            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+                ?.toIntOrNull()
+                ?.let { sampleRate = "$it Hz" }
+            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
+                ?.let { duration = com.example.jellymusic.util.formatDuration(it) }
+        } catch (_: Exception) {
+        } finally {
+            runCatching { retriever.release() }
+        }
+        val length = runCatching {
+            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+        }.getOrNull() ?: -1L
+        if (length > 0) size = com.example.jellymusic.ui.formatBytes(length)
+    }
+    return AudioInfo(codec.ifBlank { "-" }, bitrate, sampleRate, duration, size, local)
 }
 
 @Composable
@@ -275,6 +384,13 @@ private fun TrackActionsDialog(state: AppState) {
                     state.trackMenu = null
                 }
                 ActionRow(
+                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
+                    text = stringResource(R.string.audio_info),
+                ) {
+                    state.audioInfoItem = item
+                    state.trackMenu = null
+                }
+                ActionRow(
                     icon = { Icon(Icons.Default.GraphicEq, contentDescription = null) },
                     text = stringResource(R.string.audio_features),
                 ) {
@@ -319,13 +435,19 @@ private fun TrackActionsDialog(state: AppState) {
 
 @Composable
 private fun AddToPlaylistDialog(state: AppState) {
-    val item = state.addToPlaylistItem ?: return
+    val batch = state.addToPlaylistBatch
+    val items = if (batch.isNotEmpty()) batch else listOfNotNull(state.addToPlaylistItem)
+    if (items.isEmpty()) return
     val context = LocalContext.current
     var showCreate by remember { mutableStateOf(false) }
     val playlists = state.localPlaylists.playlists
+    fun close() {
+        state.addToPlaylistItem = null
+        state.addToPlaylistBatch = emptyList()
+    }
 
     AlertDialog(
-        onDismissRequest = { state.addToPlaylistItem = null },
+        onDismissRequest = { close() },
         title = { Text(stringResource(R.string.add_to_playlist_title)) },
         text = {
             Column {
@@ -341,8 +463,8 @@ private fun AddToPlaylistDialog(state: AppState) {
                             icon = { Icon(Icons.Default.QueueMusic, contentDescription = null) },
                             text = playlist.name,
                         ) {
-                            state.localPlaylists.addItem(playlist.id, item)
-                            state.addToPlaylistItem = null
+                            items.forEach { state.localPlaylists.addItem(playlist.id, it) }
+                            close()
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.added_to_playlist),
@@ -360,7 +482,7 @@ private fun AddToPlaylistDialog(state: AppState) {
             }
         },
         confirmButton = {
-            TextButton(onClick = { state.addToPlaylistItem = null }) {
+            TextButton(onClick = { close() }) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -370,9 +492,9 @@ private fun AddToPlaylistDialog(state: AppState) {
         CreatePlaylistDialog(
             onCreate = { name ->
                 val playlist = state.localPlaylists.create(name)
-                state.localPlaylists.addItem(playlist.id, item)
+                items.forEach { state.localPlaylists.addItem(playlist.id, it) }
                 showCreate = false
-                state.addToPlaylistItem = null
+                close()
                 Toast.makeText(
                     context,
                     context.getString(R.string.added_to_playlist),

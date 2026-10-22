@@ -3,7 +3,9 @@ package com.example.jellymusic.data
 import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
+import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSpec
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -15,6 +17,7 @@ import com.example.jellymusic.jellyfin.BaseItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -107,6 +110,24 @@ class StreamCache(context: Context, private val settings: AppSettings) {
     fun playCount(itemId: String): Int {
         val key = keyFor(itemId) ?: return 0
         return entries[key]?.playCount ?: 0
+    }
+
+    fun prefetch(url: String) {
+        if (url.isBlank()) return
+        ioScope.launch {
+            runCatching {
+                val uri = Uri.parse(url)
+                val key = keyFromUri(uri)
+                if (simpleCache.getCachedBytes(key, 0, Long.MAX_VALUE) > 0L) return@launch
+                val source = cacheDataSourceFactory.createDataSource()
+                source.open(DataSpec(uri))
+                val buffer = ByteArray(64 * 1024)
+                while (source.read(buffer, 0, buffer.size) != C.RESULT_END_OF_INPUT) {
+                    if (!isActive) break
+                }
+                source.close()
+            }
+        }
     }
 
     fun isCached(itemId: String): Boolean {

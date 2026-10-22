@@ -183,6 +183,8 @@
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="save">Save</string>
     <string name="view_all">View all</string>
+    <string name="select">Select</string>
+    <string name="select_all">Select all</string>
     <string name="all_songs">All songs</string>
     <string name="search_songs">Songs</string>
     <string name="search_albums">Albums</string>
@@ -207,6 +209,7 @@
     <string name="crossfade">Crossfade</string>
     <string name="crossfade_off">Off</string>
     <string name="crossfade_seconds">%1$d s</string>
+    <string name="prefetch_next">Preload next track</string>
     <string name="skip_silence">Skip silence</string>
     <string name="normalize_volume">Loudness normalization</string>
     <string name="report_playback">Report playback to server</string>
@@ -269,6 +272,11 @@
     <string name="most_played">Most played</string>
     <string name="high_rated">High rated</string>
     <string name="rating">Rating</string>
+    <string name="audio_info">Audio info</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="sample_rate">Sample rate</string>
+    <string name="file_size">File size</string>
+    <string name="duration_label">Duration</string>
     <string name="edit_info">Edit info</string>
     <string name="title_label">Title</string>
     <string name="artist_label">Artist</string>

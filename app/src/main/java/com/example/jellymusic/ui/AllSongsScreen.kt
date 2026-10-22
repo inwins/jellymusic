@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +29,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -91,6 +99,8 @@ fun AllSongsScreen(state: AppState) {
     }
 
     var didScroll by remember { mutableStateOf(false) }
+    var selecting by remember { mutableStateOf(false) }
+    val selected = remember { mutableStateMapOf<String, BaseItem>() }
     LaunchedEffect(items.size, state.player.current?.id) {
         if (!didScroll && items.isNotEmpty()) {
             val index = items.indexOfFirst { it.id == state.player.current?.id }
@@ -102,8 +112,27 @@ fun AllSongsScreen(state: AppState) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopBar(stringResource(R.string.all_songs), onBack = { state.back() })
+        TopBar(
+            stringResource(R.string.all_songs),
+            onBack = { state.back() },
+            actions = {
+                IconButton(onClick = {
+                    if (selecting) {
+                        selecting = false
+                        selected.clear()
+                    } else {
+                        selecting = true
+                    }
+                }) {
+                    Icon(
+                        if (selecting) Icons.Default.Close else Icons.Default.Checklist,
+                        contentDescription = stringResource(R.string.select),
+                    )
+                }
+            },
+        )
 
+        Box(Modifier.weight(1f)) {
         when {
             items.isEmpty() && loading -> Box(
                 Modifier.fillMaxSize(),
@@ -168,6 +197,15 @@ fun AllSongsScreen(state: AppState) {
                             state.api?.let { api -> state.downloads.download(api, item) }
                         },
                         onLongClick = { state.trackMenu = item },
+                        selectable = selecting,
+                        selected = selected.containsKey(id),
+                        onSelect = {
+                            if (selected.containsKey(id)) {
+                                selected.remove(id)
+                            } else {
+                                selected[id] = item
+                            }
+                        },
                     )
                 }
                 if (loading) {
@@ -226,7 +264,54 @@ fun AllSongsScreen(state: AppState) {
                 }
             }
         }
+        }
+        if (selecting) {
+            SelectionBar(
+                allItems = items,
+                selected = selected,
+                onSelectAll = { items.forEach { selected[it.id] = it } },
+                onQueue = { selected.values.forEach { state.player.addToQueue(it) } },
+                onPlaylist = { state.addToPlaylistBatch = selected.values.toList() },
+                onDownload = {
+                    state.api?.let { api ->
+                        selected.values.forEach { state.downloads.download(api, it) }
+                    }
+                },
+            )
+        }
     }
 }
 
 private const val PAGE_SIZE = 100
+@Composable
+private fun SelectionBar(
+    allItems: List<BaseItem>,
+    selected: Map<String, BaseItem>,
+    onSelectAll: () -> Unit,
+    onQueue: () -> Unit,
+    onPlaylist: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    Surface(tonalElevation = 3.dp) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onSelectAll) {
+                Text(stringResource(R.string.select_all))
+            }
+            TextButton(onClick = onQueue, enabled = selected.isNotEmpty()) {
+                Text(stringResource(R.string.add_to_queue))
+            }
+            TextButton(onClick = onPlaylist, enabled = selected.isNotEmpty()) {
+                Text(stringResource(R.string.add_to_playlist))
+            }
+            TextButton(onClick = onDownload, enabled = selected.isNotEmpty()) {
+                Text(stringResource(R.string.download))
+            }
+        }
+    }
+}

@@ -406,6 +406,14 @@ class MusicPlayer(
         crossfadeArmed = false
         durationMs = knownDuration()
         startTicker()
+        prefetchNext()
+    }
+
+    private fun prefetchNext() {
+        if (!settings.prefetchNext) return
+        val next = queue.getOrNull(playIndex + 1) ?: return
+        if (next.localUri != null || downloadStore?.isDownloaded(next.id) == true) return
+        api?.let { client -> streamCache.prefetch(client.streamUrl(next)) }
     }
 
     private fun gainFor(item: BaseItem?): Float {

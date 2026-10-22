@@ -74,8 +74,10 @@ class AppState(private val context: Context) {
 
     var trackMenu by mutableStateOf<BaseItem?>(null)
     var addToPlaylistItem by mutableStateOf<BaseItem?>(null)
+    var addToPlaylistBatch by mutableStateOf<List<BaseItem>>(emptyList())
     var searchRequest by mutableStateOf<String?>(null)
     var localEditItem by mutableStateOf<BaseItem?>(null)
+    var audioInfoItem by mutableStateOf<BaseItem?>(null)
     val syncing = mutableStateOf(false)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)

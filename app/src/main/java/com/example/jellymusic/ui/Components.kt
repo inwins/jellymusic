@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -206,14 +207,28 @@ fun TrackRow(
     onDownload: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    selectable: Boolean = false,
+    selected: Boolean = false,
+    onSelect: (() -> Unit)? = null,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                onClick = { if (selectable) onSelect?.invoke() else onClick() },
+                onLongClick = onLongClick,
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selectable) {
+            Checkbox(
+                checked = selected,
+                onCheckedChange = { onSelect?.invoke() },
+                modifier = Modifier.size(36.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         if (showArtwork) {
             Artwork(artworkUrl, 44.dp)
             Spacer(Modifier.width(12.dp))

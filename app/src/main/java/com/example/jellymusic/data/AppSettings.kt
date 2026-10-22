@@ -74,6 +74,15 @@ class AppSettings(context: Context) {
             prefs.edit().putInt(KEY_CROSSFADE_MS, value).apply()
         }
 
+    private var prefetchState by mutableStateOf(prefs.getBoolean(KEY_PREFETCH, true))
+
+    var prefetchNext: Boolean
+        get() = prefetchState
+        set(value) {
+            prefetchState = value
+            prefs.edit().putBoolean(KEY_PREFETCH, value).apply()
+        }
+
     private var skipSilenceState by mutableStateOf(prefs.getBoolean(KEY_SKIP_SILENCE, false))
 
     var skipSilence: Boolean
@@ -288,6 +297,7 @@ class AppSettings(context: Context) {
         const val KEY_CROSSFADE_MS = "crossfade_ms"
         const val KEY_NORMALIZE = "normalize_volume"
         const val KEY_SKIP_SILENCE = "skip_silence"
+        const val KEY_PREFETCH = "prefetch_next"
         const val KEY_REPORT_PLAYBACK = "report_playback"
         const val KEY_LYRICS_OFFSETS = "lyrics_offsets"
         const val KEY_ALBUM_SORT = "album_sort"

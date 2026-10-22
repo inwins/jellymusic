@@ -286,6 +286,13 @@ fun SettingsScreen(state: AppState) {
             }
             item {
                 SettingSwitchRow(
+                    title = stringResource(R.string.prefetch_next),
+                    checked = state.settings.prefetchNext,
+                    onCheckedChange = { state.settings.prefetchNext = it },
+                )
+            }
+            item {
+                SettingSwitchRow(
                     title = stringResource(R.string.skip_silence),
                     checked = state.settings.skipSilence,
                     onCheckedChange = {
