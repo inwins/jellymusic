@@ -58,6 +58,7 @@ data class AudioFeatures(
     val chords: List<ChordSegment> = emptyList(),
     val timeSignature: String = "",
     val keyConfidence: Float = 0f,
+    val mfcc: List<Float> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("bpm", bpm.toDouble())
@@ -80,6 +81,7 @@ data class AudioFeatures(
         .put("chords", JSONArray().apply { chords.forEach { put(it.toJson()) } })
         .put("timeSignature", timeSignature)
         .put("keyConfidence", keyConfidence.toDouble())
+        .put("mfcc", JSONArray(mfcc))
 
     companion object {
         fun fromJson(json: JSONObject): AudioFeatures {
@@ -116,6 +118,9 @@ data class AudioFeatures(
                 } ?: emptyList(),
                 timeSignature = json.optString("timeSignature"),
                 keyConfidence = json.optDouble("keyConfidence").toFloat(),
+                mfcc = json.optJSONArray("mfcc")?.let { array ->
+                    (0 until array.length()).map { array.optDouble(it).toFloat() }
+                } ?: emptyList(),
             )
         }
 
@@ -127,7 +132,7 @@ data class AudioFeatures(
         }
 
         fun vector(features: AudioFeatures): FloatArray {
-            val vector = FloatArray(5 + 12)
+            val vector = FloatArray(5 + 12 + 13)
             vector[0] = features.bpm / 180f
             vector[1] = features.energy
             vector[2] = features.brightness
@@ -135,6 +140,9 @@ data class AudioFeatures(
             vector[4] = features.beatStrength
             for (i in 0 until 12) {
                 vector[5 + i] = features.chroma.getOrElse(i) { 0f } * 0.5f
+            }
+            for (i in 0 until 13) {
+                vector[17 + i] = (features.mfcc.getOrElse(i) { 0f }) * 0.05f
             }
             return vector
         }

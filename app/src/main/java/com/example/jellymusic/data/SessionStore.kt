@@ -12,9 +12,9 @@ class SessionStore(context: Context) {
         }
 
     var token: String?
-        get() = prefs.getString(KEY_TOKEN, null)
+        get() = SecretBox.decrypt(prefs.getString(KEY_TOKEN, null))
         set(value) {
-            prefs.edit().putString(KEY_TOKEN, value).apply()
+            prefs.edit().putString(KEY_TOKEN, value?.let { SecretBox.encrypt(it) }).apply()
         }
 
     var userId: String?

@@ -1,5 +1,12 @@
 Jellyfin Music — Changelog
 
+2.12.0
+- MFCC timbre embedding improves "similar sound" recommendations
+- A-Z quick index in All songs
+- Access token encrypted with the Android Keystore
+- Crash logs written locally
+- Quick Connect sign-in
+
 2.11.0
 - Chord progression recognition (major/minor triads per beat) and time-signature estimate
 - Key confidence shown in the analysis

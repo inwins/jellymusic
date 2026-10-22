@@ -1,8 +1,10 @@
 package com.example.jellymusic.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
@@ -127,7 +130,15 @@ fun AllSongsScreen(state: AppState) {
 
             items.isEmpty() -> EmptyHint(stringResource(R.string.search_no_results))
 
-            else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            else -> Box(Modifier.fillMaxSize()) {
+                val indexEntries = remember(items.size) {
+                    val map = LinkedHashMap<Char, Int>()
+                    items.forEachIndexed { index, item ->
+                        map.getOrPut(alphabetIndexKey(item.name)) { index }
+                    }
+                    map
+                }
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 item {
                     DetailHeader(
                         state = state,
@@ -185,6 +196,31 @@ fun AllSongsScreen(state: AppState) {
                             }) {
                                 Text(stringResource(R.string.retry))
                             }
+                        }
+                    }
+                }
+            }
+                if (indexEntries.size > 3) {
+                    Column(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .padding(end = 2.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        indexEntries.forEach { (key, index) ->
+                            Text(
+                                key.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 9.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clickable {
+                                        scope.launch { listState.scrollToItem(index + 1) }
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                            )
                         }
                     }
                 }

@@ -18,6 +18,8 @@ import kotlin.math.sqrt
 object AudioDsp {
     const val FRAME = 2048
     const val HOP = 1024
+    private const val MEL_FILTERS = 26
+    private const val MFCC_COEFFS = 13
 
     private val MAJOR = floatArrayOf(
         6.35f, 2.23f, 3.48f, 2.33f, 4.38f, 4.09f,
@@ -58,6 +60,8 @@ object AudioDsp {
         val frameChroma = ArrayList<FloatArray>()
         val chroma = FloatArray(12)
         val freqs = FloatArray(bins) { (it + 1) * sampleRate.toFloat() / FRAME }
+        val melFilters = melFilterbank(sampleRate, MEL_FILTERS, bins, freqs)
+        val mfccSum = DoubleArray(MFCC_COEFFS)
 
         var centroidSum = 0f
         var flatnessSum = 0f
@@ -95,6 +99,14 @@ object AudioDsp {
                     chroma[pc] += value
                     frameChromaVec[pc] += value
                 }
+            }
+            for (c in 0 until MFCC_COEFFS) {
+                var sum = 0.0
+                for (f in 0 until MEL_FILTERS) {
+                    sum += melLogEnergy(melFilters[f], mag, f) *
+                        kotlin.math.cos(PI * c * (f + 0.5) / MEL_FILTERS)
+                }
+                mfccSum[c] += sum / MEL_FILTERS
             }
             var rms = 0f
             for (i in 0 until FRAME) rms += samples[pos + i] * samples[pos + i]
@@ -167,7 +179,49 @@ object AudioDsp {
             chords = buildChords(frameChroma, bpm, sampleRate),
             timeSignature = estimateTimeSignature(flux, bpm, sampleRate),
             keyConfidence = keyConfidence,
+            mfcc = if (frames > 0) {
+                mfccSum.map { (it / frames).toFloat() }
+            } else {
+                emptyList()
+            },
         )
+    }
+
+    private fun melLogEnergy(filter: FloatArray, mag: FloatArray, index: Int): Double {
+        var energy = 0.0
+        for (k in filter.indices) {
+            if (filter[k] != 0f) energy += filter[k] * mag[k]
+        }
+        if (energy <= 0.0) return -23.0
+        return ln(energy).coerceAtLeast(-23.0)
+    }
+
+    private fun melFilterbank(
+        sampleRate: Int,
+        filters: Int,
+        bins: Int,
+        freqs: FloatArray,
+    ): Array<FloatArray> {
+        fun hzToMel(hz: Double) = 2595.0 * kotlin.math.log10(1.0 + hz / 700.0)
+        fun melToHz(mel: Double) = 700.0 * (Math.pow(10.0, mel / 2595.0) - 1.0)
+        val minMel = hzToMel(80.0)
+        val maxMel = hzToMel((sampleRate / 2).toDouble() * 0.95)
+        val points = DoubleArray(filters + 2) { melToHz(minMel + (maxMel - minMel) * it / (filters + 1)) }
+        return Array(filters) { f ->
+            val filter = FloatArray(bins)
+            val left = points[f]
+            val center = points[f + 1]
+            val right = points[f + 2]
+            for (k in 0 until bins) {
+                val f0 = freqs[k].toDouble()
+                filter[k] = when {
+                    f0 < left || f0 > right -> 0f
+                    f0 <= center -> ((f0 - left) / (center - left)).toFloat()
+                    else -> ((right - f0) / (right - center)).toFloat()
+                }
+            }
+            filter
+        }
     }
 
     private fun buildChords(

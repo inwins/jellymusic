@@ -13,6 +13,20 @@ class JellyMusicApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                val dir = java.io.File(filesDir, "crashes").apply { mkdirs() }
+                java.io.File(dir, "crash-" + System.currentTimeMillis() + ".txt")
+                    .writeText(
+                        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                            .format(java.util.Date()) + " " + thread.name + "\n" +
+                            throwable.stackTraceToString(),
+                    )
+            }
+            previousHandler?.uncaughtException(thread, throwable)
+        }
+
         val imageClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request()

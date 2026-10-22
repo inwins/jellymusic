@@ -372,3 +372,8 @@ fun PlayIconButton(onClick: () -> Unit) {
         )
     }
 }
+fun alphabetIndexKey(name: String): Char {
+    val first = name.trim().firstOrNull() ?: return '#'
+    val upper = first.uppercaseChar()
+    return if (upper in 'A'..'Z') upper else '#'
+}

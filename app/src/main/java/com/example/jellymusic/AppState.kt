@@ -192,6 +192,44 @@ class AppState(private val context: Context) {
         }
     }
 
+    private var quickApi: com.example.jellymusic.jellyfin.JellyfinApi? = null
+
+    suspend fun startQuickConnect(serverInput: String): Result<com.example.jellymusic.jellyfin.QuickConnectState> {
+        return try {
+            val server = serverInput.trim().trimEnd('/')
+            val client = JellyfinApi(context, server, deviceId, Build.MODEL)
+            quickApi = client
+            Result.success(client.quickConnectInitiate())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun pollQuickConnect(secret: String): com.example.jellymusic.jellyfin.AuthResult? =
+        quickApi?.quickConnectAuthenticate(secret)
+
+    fun completeQuickConnect(auth: com.example.jellymusic.jellyfin.AuthResult) {
+        val client = quickApi ?: return
+        val server = client.baseUrl
+        setupApi(client)
+        session.serverUrl = server
+        session.token = auth.accessToken
+        session.userId = auth.userId
+        session.userName = auth.displayName
+        api = client
+        player.api = client
+        downloads.resumePending(client)
+        AutoDownloadScheduler.schedule(context)
+        userName.value = auth.displayName
+        sessionExpired.value = false
+        isLoggedIn.value = true
+        bindPlaybackService()
+        backStack.clear()
+        backStack.add(Screen.Home)
+        scope.launch { syncOfflineChanges() }
+        quickApi = null
+    }
+
     fun logout() {
         sessionExpired.value = false
         lyricsOverlay.hide()

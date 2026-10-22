@@ -23,6 +23,9 @@
     <string name="show_password">Show password</string>
     <string name="hide_password">Hide password</string>
     <string name="login">Log in</string>
+    <string name="quick_connect">Quick Connect</string>
+    <string name="quick_connect_hint">Enter this code in the Jellyfin web or app to sign in:</string>
+    <string name="quick_connect_start">Quick Connect</string>
     <string name="login_failed">Login failed. Check the server address and credentials.</string>
 
     <string name="settings">Settings</string>

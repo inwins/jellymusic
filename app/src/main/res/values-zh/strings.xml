@@ -23,6 +23,9 @@
     <string name="show_password">显示密码</string>
     <string name="hide_password">隐藏密码</string>
     <string name="login">登录</string>
+    <string name="quick_connect">快速连接</string>
+    <string name="quick_connect_hint">请在 Jellyfin 网页或客户端输入以下代码完成登录：</string>
+    <string name="quick_connect_start">快速连接登录</string>
     <string name="login_failed">登录失败，请检查服务器地址和凭据。</string>
 
     <string name="settings">设置</string>

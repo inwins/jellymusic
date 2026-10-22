@@ -105,6 +105,27 @@ class AudioDspTest {
         assertTrue(features.pitchHistogram.sum() > 0f)
     }
 
+    @Test
+    fun mfccDiscriminatesTimbre() {
+        val tone = FloatArray(sampleRate * 2) { sin(2.0 * PI * 440.0 * it / sampleRate).toFloat() }
+        val rich = FloatArray(sampleRate * 2) {
+            (sin(2.0 * PI * 440.0 * it / sampleRate) * 0.6 +
+                sin(2.0 * PI * 1320.0 * it / sampleRate) * 0.4).toFloat()
+        }
+        var seed = 12345L
+        val noise = FloatArray(sampleRate * 2) {
+            seed = (seed * 1103515245 + 12345) and 0x7fffffff
+            ((seed % 1000) / 1000f - 0.5f)
+        }
+        val fa = AudioDsp.analyze(tone, sampleRate)
+        val fb = AudioDsp.analyze(rich, sampleRate)
+        val fn = AudioDsp.analyze(noise, sampleRate)
+        assertEquals(13, fa.mfcc.size)
+        val similar = AudioFeatures.cosine(AudioFeatures.vector(fa), AudioFeatures.vector(fb))
+        val different = AudioFeatures.cosine(AudioFeatures.vector(fa), AudioFeatures.vector(fn))
+        assertTrue("similar=$similar different=$different", similar > different)
+    }
+
     private fun features(bpm: Float) = AudioFeatures(
         bpm = bpm,
         keyIndex = 9,

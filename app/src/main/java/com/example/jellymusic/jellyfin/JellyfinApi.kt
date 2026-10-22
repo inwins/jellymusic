@@ -25,6 +25,12 @@ data class AuthResult(
     val displayName: String,
 )
 
+data class QuickConnectState(
+    val secret: String,
+    val code: String,
+    val authenticated: Boolean,
+)
+
 class JellyfinApi(
     private val context: Context,
     val baseUrl: String,
@@ -93,6 +99,49 @@ class JellyfinApi(
         404 -> context.getString(R.string.error_not_found)
         else -> context.getString(R.string.error_http, code, body)
     }
+
+    suspend fun quickConnectInitiate(): QuickConnectState = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("$baseUrl/QuickConnect/Initiate")
+            .header("Authorization", authHeader())
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IOException(describeError(response.code, body))
+            val json = JSONObject(body)
+            QuickConnectState(
+                secret = json.optString("Secret"),
+                code = json.optString("Code"),
+                authenticated = json.optBoolean("Authenticated"),
+            )
+        }
+    }
+
+    suspend fun quickConnectAuthenticate(secret: String): AuthResult? =
+        withContext(Dispatchers.IO) {
+            val url = "$baseUrl/QuickConnect/Connect?secret=" +
+                URLEncoder.encode(secret, "UTF-8")
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", authHeader())
+                .get()
+                .build()
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) return@use null
+                val json = JSONObject(body)
+                if (!json.optBoolean("Authenticated")) return@use null
+                val token = json.optString("AccessToken").takeIf { it.isNotBlank() }
+                    ?: return@use null
+                val user = json.optJSONObject("User")
+                val id = user?.optString("Id") ?: json.optString("UserId")
+                val name = user?.optString("Name").orEmpty()
+                accessToken = token
+                userId = id
+                AuthResult(token, id.orEmpty(), name)
+            }
+        }
 
     suspend fun authenticate(username: String, password: String): AuthResult =
         withContext(Dispatchers.IO) {

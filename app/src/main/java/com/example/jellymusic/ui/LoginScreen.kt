@@ -38,6 +38,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import com.example.jellymusic.jellyfin.QuickConnectState
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import kotlinx.coroutines.launch
@@ -50,8 +55,21 @@ fun LoginScreen(state: AppState) {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var passwordVisible by remember { mutableStateOf(false) }
+    var quickConnect by remember { mutableStateOf<QuickConnectState?>(null) }
     val scope = rememberCoroutineScope()
     val loginFailedMessage = stringResource(R.string.login_failed)
+
+    LaunchedEffect(quickConnect?.secret) {
+        val secret = quickConnect?.secret ?: return@LaunchedEffect
+        while (quickConnect != null) {
+            delay(2000)
+            val auth = state.pollQuickConnect(secret)
+            if (auth != null) {
+                state.completeQuickConnect(auth)
+                quickConnect = null
+            }
+        }
+    }
 
     Column(
         Modifier
@@ -174,6 +192,43 @@ fun LoginScreen(state: AppState) {
                 Text(stringResource(R.string.login), fontSize = 16.sp)
             }
         }
+        Spacer(Modifier.height(12.dp))
+        TextButton(
+            onClick = {
+                if (server.isBlank()) {
+                    error = loginFailedMessage
+                    return@TextButton
+                }
+                error = null
+                scope.launch {
+                    state.startQuickConnect(server)
+                        .onSuccess { quickConnect = it }
+                        .onFailure { error = it.message ?: loginFailedMessage }
+                }
+            },
+            enabled = !loading && server.isNotBlank(),
+        ) {
+            Text(stringResource(R.string.quick_connect_start))
+        }
         Spacer(Modifier.height(32.dp))
+    }
+
+    quickConnect?.let { qc ->
+        AlertDialog(
+            onDismissRequest = { quickConnect = null },
+            title = { Text(stringResource(R.string.quick_connect)) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(R.string.quick_connect_hint))
+                    Spacer(Modifier.height(12.dp))
+                    Text(qc.code, fontSize = 28.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { quickConnect = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
