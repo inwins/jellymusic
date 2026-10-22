@@ -27,6 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -57,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
+import com.example.jellymusic.data.AudioAnalysisScheduler
 import com.example.jellymusic.data.AutoDownloadScheduler
 import com.example.jellymusic.data.ThemeMode
 import kotlinx.coroutines.delay
@@ -697,6 +700,121 @@ fun SettingsScreen(state: AppState) {
                 )
             }
 
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            }
+            item { SettingsSectionTitle(stringResource(R.string.servers)) }
+            state.savedServers().forEachIndexed { index, server ->
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { state.switchServer(server) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                server.userName.ifBlank { server.url },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                server.url,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (index == 0) {
+                            Text(
+                                stringResource(R.string.active_server),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { state.logout() }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.add_server),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { state.navigate(Screen.FeatureLibrary) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Analytics,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.feature_library),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            AudioAnalysisScheduler.enqueue(context)
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.analyze_library),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Analytics,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.analyze_library),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
             }

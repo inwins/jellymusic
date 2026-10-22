@@ -71,6 +71,7 @@ class AppState(private val context: Context) {
     var trackMenu by mutableStateOf<BaseItem?>(null)
     var addToPlaylistItem by mutableStateOf<BaseItem?>(null)
     var searchRequest by mutableStateOf<String?>(null)
+    var localEditItem by mutableStateOf<BaseItem?>(null)
     val syncing = mutableStateOf(false)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -182,6 +183,7 @@ class AppState(private val context: Context) {
             userName.value = auth.displayName
             sessionExpired.value = false
             isLoggedIn.value = true
+            session.rememberCurrent()
             bindPlaybackService()
             backStack.clear()
             backStack.add(Screen.Home)
@@ -223,11 +225,32 @@ class AppState(private val context: Context) {
         userName.value = auth.displayName
         sessionExpired.value = false
         isLoggedIn.value = true
+        session.rememberCurrent()
         bindPlaybackService()
         backStack.clear()
         backStack.add(Screen.Home)
         scope.launch { syncOfflineChanges() }
         quickApi = null
+    }
+
+    fun savedServers(): List<com.example.jellymusic.data.ServerInfo> = session.servers()
+
+    fun switchServer(server: com.example.jellymusic.data.ServerInfo) {
+        val client = JellyfinApi(context, server.url, deviceId, Build.MODEL)
+        client.accessToken = server.token
+        client.userId = server.userId
+        setupApi(client)
+        session.setActive(server)
+        api = client
+        player.api = client
+        downloads.resumePending(client)
+        AutoDownloadScheduler.schedule(context)
+        userName.value = server.userName
+        sessionExpired.value = false
+        isLoggedIn.value = true
+        backStack.clear()
+        backStack.add(Screen.Home)
+        scope.launch { syncOfflineChanges() }
     }
 
     fun logout() {

@@ -2,6 +2,8 @@ package com.example.jellymusic.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
@@ -42,6 +45,65 @@ import com.example.jellymusic.R
 fun GlobalDialogs(state: AppState) {
     TrackActionsDialog(state)
     AddToPlaylistDialog(state)
+    LocalEditDialog(state)
+}
+
+@Composable
+private fun LocalEditDialog(state: AppState) {
+    val item = state.localEditItem ?: return
+    var title by remember(item.id) { mutableStateOf(item.name) }
+    var artist by remember(item.id) { mutableStateOf(item.trackArtist.orEmpty()) }
+    var album by remember(item.id) { mutableStateOf(item.album.orEmpty()) }
+    val coverLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) state.localMusic.setCover(item.id, uri)
+    }
+    AlertDialog(
+        onDismissRequest = { state.localEditItem = null },
+        title = { Text(stringResource(R.string.edit_info)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text(stringResource(R.string.title_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = artist,
+                    onValueChange = { artist = it },
+                    label = { Text(stringResource(R.string.artist_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = album,
+                    onValueChange = { album = it },
+                    label = { Text(stringResource(R.string.album_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(onClick = { coverLauncher.launch(arrayOf("image/*")) }) {
+                    Text(stringResource(R.string.change_cover))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                state.localMusic.setOverride(item.id, title, artist, album)
+                state.localEditItem = null
+            }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { state.localEditItem = null }) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -102,6 +164,15 @@ private fun TrackActionsDialog(state: AppState) {
                 ) {
                     state.player.addToQueue(item)
                     state.trackMenu = null
+                }
+                if (isLocal) {
+                    ActionRow(
+                        icon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        text = stringResource(R.string.edit_info),
+                    ) {
+                        state.localEditItem = item
+                        state.trackMenu = null
+                    }
                 }
                 ActionRow(
                     icon = { Icon(Icons.Default.GraphicEq, contentDescription = null) },

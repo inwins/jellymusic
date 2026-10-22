@@ -28,6 +28,24 @@ class AudioFeaturesStore(context: Context) {
 
     fun get(itemId: String): AudioFeatures? = features[itemId]
 
+    suspend fun analyzeAndStore(item: BaseItem, uri: Uri): Boolean {
+        val result = runCatching { analyzer.analyze(uri) }.getOrNull() ?: return false
+        if (result.bpm <= 0f) return false
+        features[item.id] = result
+        items[item.id] = item
+        save()
+        return true
+    }
+
+    fun all(): List<Pair<BaseItem, AudioFeatures>> =
+        items.mapNotNull { (id, item) -> features[id]?.let { item to it } }
+
+    fun reload() {
+        features.clear()
+        items.clear()
+        load()
+    }
+
     fun item(itemId: String): BaseItem? = items[itemId]
 
     fun analyzedItems(): List<BaseItem> = items.values.toList()

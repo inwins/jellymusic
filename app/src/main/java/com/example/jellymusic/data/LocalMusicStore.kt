@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -26,6 +27,8 @@ class LocalMusicStore(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val songs = mutableStateListOf<BaseItem>()
+    private val folders = mutableMapOf<String, String>()
+    private val overrides = mutableMapOf<String, Triple<String, String, String>>()
     val scanning = mutableStateOf(false)
     val lastError = mutableStateOf<String?>(null)
     val folderLabel = mutableStateOf(prefs.getString(KEY_LABEL, null))
@@ -84,23 +87,27 @@ class LocalMusicStore(context: Context) {
     private fun scan(rootUri: Uri): List<BaseItem> {
         val root = DocumentFile.fromTreeUri(appContext, rootUri) ?: return emptyList()
         val result = mutableListOf<BaseItem>()
-        val stack = ArrayDeque<DocumentFile>()
-        stack.add(root)
+        val stack = ArrayDeque<Pair<DocumentFile, String>>()
+        stack.add(root to (root.name ?: ""))
         var visited = 0
         while (stack.isNotEmpty() && result.size < MAX_TRACKS && visited < MAX_FILES) {
-            val dir = stack.removeLast()
+            val (dir, folderName) = stack.removeLast()
             val children = runCatching { dir.listFiles() }.getOrDefault(emptyArray())
             for (doc in children) {
                 visited++
                 if (doc.isDirectory) {
-                    stack.add(doc)
+                    stack.add(doc to (doc.name ?: folderName))
                     continue
                 }
                 val name = doc.name ?: continue
                 if (!isAudioFile(name, doc.type)) continue
-                readTrack(doc.uri, name)?.let { result.add(it) }
+                readTrack(doc.uri, name)?.let { item ->
+                    folders[item.id] = folderName
+                    result.add(item)
+                }
             }
         }
+        persistFolders()
         return result.sortedWith(compareBy({ it.albumArtist ?: "" }, { it.album ?: "" }, { it.name }))
     }
 
@@ -181,6 +188,66 @@ class LocalMusicStore(context: Context) {
         return mime?.startsWith("audio/") == true
     }
 
+    fun folderOf(itemId: String): String? = folders[itemId]
+
+    fun setOverride(itemId: String, title: String, artist: String, album: String) {
+        overrides[itemId] = Triple(title, artist, album)
+        val index = songs.indexOfFirst { it.id == itemId }
+        if (index >= 0) {
+            val item = songs[index]
+            songs[index] = item.copy(
+                name = title.ifBlank { item.name },
+                albumArtist = artist.ifBlank { item.albumArtist },
+                artists = if (artist.isBlank()) item.artists else listOf(artist),
+                album = album.ifBlank { item.album },
+            )
+        }
+        persist()
+        persistOverrides()
+    }
+
+    fun setCover(itemId: String, uri: Uri) {
+        runCatching {
+            appContext.contentResolver.openInputStream(uri)?.use { input ->
+                val bitmap = BitmapFactory.decodeStream(input) ?: return@use
+                val file = File(artDir, itemId.replace(':', '_') + ".jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 88, out)
+                }
+                bitmap.recycle()
+            }
+        }
+        val index = songs.indexOfFirst { it.id == itemId }
+        if (index >= 0) {
+            songs[index] = songs[index].copy(hasImage = true)
+        }
+        persist()
+    }
+
+    private fun persistFolders() {
+        runCatching {
+            val json = JSONObject()
+            folders.forEach { (id, name) -> json.put(id, name) }
+            prefs.edit().putString(KEY_FOLDERS, json.toString()).apply()
+        }
+    }
+
+    private fun persistOverrides() {
+        runCatching {
+            val json = JSONObject()
+            overrides.forEach { (id, triple) ->
+                json.put(
+                    id,
+                    JSONObject()
+                        .put("title", triple.first)
+                        .put("artist", triple.second)
+                        .put("album", triple.third),
+                )
+            }
+            prefs.edit().putString(KEY_OVERRIDES, json.toString()).apply()
+        }
+    }
+
     private fun persist() {
         runCatching {
             val array = JSONArray()
@@ -190,11 +257,51 @@ class LocalMusicStore(context: Context) {
     }
 
     private fun load() {
+        runCatching {
+            prefs.getString(KEY_FOLDERS, null)?.let { raw ->
+                val json = JSONObject(raw)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    folders[key] = json.optString(key)
+                }
+            }
+            prefs.getString(KEY_OVERRIDES, null)?.let { raw ->
+                val json = JSONObject(raw)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val value = json.optJSONObject(key) ?: continue
+                    overrides[key] = Triple(
+                        value.optString("title"),
+                        value.optString("artist"),
+                        value.optString("album"),
+                    )
+                }
+            }
+        }
         val raw = prefs.getString(KEY_ITEMS, null) ?: return
         runCatching {
             val array = JSONArray(raw)
             for (i in 0 until array.length()) {
-                songs.add(baseItemFromJson(array.getJSONObject(i)))
+                val item = baseItemFromJson(array.getJSONObject(i))
+                val override = overrides[item.id]
+                songs.add(
+                    if (override == null) {
+                        item
+                    } else {
+                        item.copy(
+                            name = override.first.ifBlank { item.name },
+                            albumArtist = override.second.ifBlank { item.albumArtist },
+                            artists = if (override.second.isBlank()) {
+                                item.artists
+                            } else {
+                                listOf(override.second)
+                            },
+                            album = override.third.ifBlank { item.album },
+                        )
+                    },
+                )
             }
         }
     }
@@ -208,6 +315,8 @@ class LocalMusicStore(context: Context) {
         const val KEY_TREE = "tree_uri"
         const val KEY_LABEL = "label"
         const val KEY_ITEMS = "items"
+        const val KEY_FOLDERS = "folders"
+        const val KEY_OVERRIDES = "overrides"
         const val MAX_TRACKS = 5000
         const val MAX_FILES = 20000
     }

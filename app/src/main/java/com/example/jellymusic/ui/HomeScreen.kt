@@ -945,6 +945,7 @@ private fun ServerPlaylistRow(
 @Composable
 fun DownloadsTab(state: AppState) {
     var mode by rememberSaveable { mutableIntStateOf(0) }
+    var groupByFolder by rememberSaveable { mutableStateOf(false) }
     val downloadedMap = state.downloads.downloadedIds
     val revision = state.streamCache.revision.value
     val downloaded = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
@@ -992,6 +993,11 @@ fun DownloadsTab(state: AppState) {
             ) {
                 SectionTitle(stringResource(R.string.local_music_count, local.size))
                 Spacer(Modifier.weight(1f))
+                FilterChip(
+                    selected = groupByFolder,
+                    onClick = { groupByFolder = !groupByFolder },
+                    label = { Text(stringResource(R.string.group_by_folder)) },
+                )
                 if (state.localMusic.treeUri != null) {
                     TextButton(
                         onClick = { state.localMusic.rescan() },
@@ -1050,18 +1056,41 @@ fun DownloadsTab(state: AppState) {
                 return@Column
             }
             LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(local) { index, item ->
-                    val id = item.id
-                    TrackRow(
-                        item = item,
-                        index = index + 1,
-                        artworkUrl = state.artworkUrl(item, 120),
-                        onClick = { state.player.play(local, index) },
-                        showArtwork = true,
-                        isCurrent = state.player.current?.id == id,
-                        favorite = false,
-                        onLongClick = { state.trackMenu = item },
-                    )
+                if (groupByFolder) {
+                    val grouped = local.groupBy { state.localMusic.folderOf(it.id).orEmpty() }
+                    grouped.forEach { (folder, folderSongs) ->
+                        if (folder.isNotBlank()) {
+                            item { SectionTitle(folder) }
+                        }
+                        itemsIndexed(folderSongs, key = { _, it -> it.id }) { _, item ->
+                            val index = local.indexOfFirst { it.id == item.id }
+                                .coerceAtLeast(0)
+                            TrackRow(
+                                item = item,
+                                index = index + 1,
+                                artworkUrl = state.artworkUrl(item, 120),
+                                onClick = { state.player.play(local, index) },
+                                showArtwork = true,
+                                isCurrent = state.player.current?.id == item.id,
+                                favorite = false,
+                                onLongClick = { state.trackMenu = item },
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(local) { index, item ->
+                        val id = item.id
+                        TrackRow(
+                            item = item,
+                            index = index + 1,
+                            artworkUrl = state.artworkUrl(item, 120),
+                            onClick = { state.player.play(local, index) },
+                            showArtwork = true,
+                            isCurrent = state.player.current?.id == id,
+                            favorite = false,
+                            onLongClick = { state.trackMenu = item },
+                        )
+                    }
                 }
             }
             return@Column

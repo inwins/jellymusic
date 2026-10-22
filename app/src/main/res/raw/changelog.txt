@@ -1,5 +1,12 @@
 Jellyfin Music — Changelog
 
+2.13.0
+- Feature library: browse analyzed songs and filter by BPM range or key
+- Background analysis of downloaded & local songs (WorkManager)
+- Multiple servers: save and switch between Jellyfin servers
+- Local music: edit title/artist/album, replace cover art and group by folder
+- Instrumented UI test added to CI
+
 2.12.0
 - MFCC timbre embedding improves "similar sound" recommendations
 - A-Z quick index in All songs
