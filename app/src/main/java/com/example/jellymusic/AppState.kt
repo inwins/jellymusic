@@ -46,13 +46,13 @@ class AppState(private val context: Context) {
         ?: "jellymusic-android"
 
     val streamCache = StreamCache(context, settings)
-    val player = MusicPlayer(context, streamCache, settings)
+    val audioFeatures = AudioFeaturesStore(context)
+    val player = MusicPlayer(context, streamCache, settings, audioFeatures)
     val visualizer = com.example.jellymusic.player.VisualizerController(context)
     val lyricsOverlay = LyricsOverlay(context)
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
     val localMusic = LocalMusicStore(context)
-    val audioFeatures = AudioFeaturesStore(context)
     val localPlaylists = LocalPlaylistStore(context)
     val searchHistory = SearchHistoryStore(context)
 
@@ -74,6 +74,29 @@ class AppState(private val context: Context) {
     val syncing = mutableStateOf(false)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    init {
+        player.onPlaybackStart = { item ->
+            if (settings.reportPlayback && item.localUri == null) {
+                scope.launch { runCatching { api?.reportPlaybackStart(item.id, player.positionMs) } }
+            }
+        }
+        player.onPlaybackProgress = { item, position ->
+            if (settings.reportPlayback && item.localUri == null) {
+                scope.launch {
+                    runCatching { api?.reportPlaybackProgress(item.id, position, !player.isPlaying) }
+                }
+            }
+        }
+        player.onPlaybackStop = { item, fully ->
+            if (settings.reportPlayback && item.localUri == null) {
+                scope.launch {
+                    runCatching { api?.reportPlaybackStopped(item.id, player.positionMs) }
+                    if (fully) runCatching { api?.markPlayed(item.id) }
+                }
+            }
+        }
+    }
 
     private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {

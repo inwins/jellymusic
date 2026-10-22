@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -48,8 +50,26 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AlbumScreen(state: AppState, screen: Screen.Album) {
+    val albumItem = remember(screen.id) {
+        BaseItem(id = screen.id, name = screen.name, type = "MusicAlbum", isFolder = true)
+    }
     Column(Modifier.fillMaxSize()) {
-        TopBar(screen.name, onBack = { state.back() })
+        TopBar(screen.name, onBack = { state.back() }) {
+            val favorite = state.favorites.isFavorite(albumItem)
+            IconButton(onClick = { state.favorites.toggle(albumItem) }) {
+                Icon(
+                    if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = stringResource(
+                        if (favorite) R.string.unfavorite else R.string.favorite,
+                    ),
+                    tint = if (favorite) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
         Loaded(key = "album-${screen.id}", load = {
             state.requireApi().getAlbumTracks(screen.id)
         }) { loaded ->
@@ -122,8 +142,26 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
 
 @Composable
 fun ArtistScreen(state: AppState, screen: Screen.Artist) {
+    val artistItem = remember(screen.id) {
+        BaseItem(id = screen.id, name = screen.name, type = "MusicArtist", isFolder = true)
+    }
     Column(Modifier.fillMaxSize()) {
-        TopBar(screen.name, onBack = { state.back() })
+        TopBar(screen.name, onBack = { state.back() }) {
+            val favorite = state.favorites.isFavorite(artistItem)
+            IconButton(onClick = { state.favorites.toggle(artistItem) }) {
+                Icon(
+                    if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = stringResource(
+                        if (favorite) R.string.unfavorite else R.string.favorite,
+                    ),
+                    tint = if (favorite) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
         Loaded(key = "artist-${screen.id}", load = {
             state.requireApi().getArtistAlbums(screen.id)
         }) { albums ->

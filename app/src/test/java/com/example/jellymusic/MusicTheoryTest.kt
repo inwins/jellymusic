@@ -74,6 +74,16 @@ class MusicTheoryTest {
     }
 
     @Test
+    fun detectsTriads() {
+        val cMajor = List(12) { if (it in setOf(0, 4, 7)) 1f else 0f }
+        val aMinor = List(12) { if (it in setOf(9, 0, 4)) 1f else 0f }
+        assertEquals(0 to false, MusicTheory.chordForChroma(cMajor))
+        assertEquals(9 to true, MusicTheory.chordForChroma(aMinor))
+        assertEquals("C", MusicTheory.chordName(0, false))
+        assertEquals("Am", MusicTheory.chordName(9, true))
+    }
+
+    @Test
     fun jianpuMapping() {
         assertEquals("1", MusicTheory.toJianpu(60, 0))
         assertEquals("2", MusicTheory.toJianpu(62, 0))

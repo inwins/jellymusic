@@ -55,6 +55,7 @@ object AudioDsp {
         val frameRms = ArrayList<Float>()
         val framePitch = ArrayList<Float>()
         val frameSalience = ArrayList<Float>()
+        val frameChroma = ArrayList<FloatArray>()
         val chroma = FloatArray(12)
         val freqs = FloatArray(bins) { (it + 1) * sampleRate.toFloat() / FRAME }
 
@@ -77,6 +78,7 @@ object AudioDsp {
             var centroid = 0f
             var logSum = 0f
             var frameFlux = 0f
+            val frameChromaVec = FloatArray(12)
             for (k in 0 until bins) {
                 val value = sqrt(re[k] * re[k] + im[k] * im[k])
                 mag[k] = value
@@ -91,6 +93,7 @@ object AudioDsp {
                     val midi = 69.0 + 12.0 * (ln(f / 440f) / ln(2.0))
                     val pc = ((midi.roundToInt() % 12) + 12) % 12
                     chroma[pc] += value
+                    frameChromaVec[pc] += value
                 }
             }
             var rms = 0f
@@ -98,6 +101,7 @@ object AudioDsp {
             rms = sqrt(rms / FRAME)
             rmsSum += rms
             frameRms.add(rms)
+            frameChroma.add(frameChromaVec)
             val (pitchHz, salience) = estimatePitch(mag, freqs)
             framePitch.add(pitchHz)
             frameSalience.add(salience)
@@ -122,7 +126,7 @@ object AudioDsp {
         val instrumentalness = (1f - vocalness).coerceIn(0f, 1f)
 
         val (bpm, beatStrength) = estimateTempo(flux, sampleRate)
-        val (keyIndex, minor) = estimateKey(chroma)
+        val (keyIndex, minor, keyConfidence) = estimateKey(chroma)
 
         val chromaSum = chroma.sum()
         val chromaNorm = if (chromaSum > 0f) {
@@ -160,7 +164,72 @@ object AudioDsp {
             pitchMin = noteEvents.minOfOrNull { it.midi } ?: 0,
             pitchMax = noteEvents.maxOfOrNull { it.midi } ?: 0,
             pitchHistogram = pitchHistogram,
+            chords = buildChords(frameChroma, bpm, sampleRate),
+            timeSignature = estimateTimeSignature(flux, bpm, sampleRate),
+            keyConfidence = keyConfidence,
         )
+    }
+
+    private fun buildChords(
+        chromaFrames: List<FloatArray>,
+        bpm: Float,
+        sampleRate: Int,
+    ): List<ChordSegment> {
+        if (chromaFrames.isEmpty() || bpm <= 0f) return emptyList()
+        val frameMs = HOP * 1000L / sampleRate
+        val beatMs = (60_000f / bpm).toLong().coerceAtLeast(200L)
+        val framesPerBeat = (beatMs / frameMs).coerceAtLeast(1L).toInt()
+        val raw = ArrayList<Pair<Long, Pair<Int, Boolean>?>>()
+        var i = 0
+        while (i < chromaFrames.size) {
+            val end = (i + framesPerBeat).coerceAtMost(chromaFrames.size)
+            val sum = FloatArray(12)
+            for (j in i until end) {
+                for (p in 0 until 12) sum[p] += chromaFrames[j][p]
+            }
+            raw.add(i.toLong() * frameMs to MusicTheory.chordForChroma(sum.toList()))
+            i = end
+        }
+        if (raw.isEmpty()) return emptyList()
+        val smoothed = raw.mapIndexed { index, pair ->
+            val counts = HashMap<Pair<Int, Boolean>?, Int>()
+            for (w in (index - 1).coerceAtLeast(0)..(index + 1).coerceAtMost(raw.size - 1)) {
+                val key = raw[w].second
+                counts[key] = (counts[key] ?: 0) + 1
+            }
+            pair.first to counts.maxByOrNull { it.value }!!.key
+        }
+        val out = ArrayList<ChordSegment>()
+        var last: Pair<Int, Boolean>? = null
+        var lastStart = 0L
+        for ((start, chord) in smoothed) {
+            if (chord != last) {
+                if (last != null) {
+                    out.add(ChordSegment(lastStart, MusicTheory.chordName(last.first, last.second)))
+                }
+                last = chord
+                lastStart = start
+            }
+        }
+        if (last != null) {
+            out.add(ChordSegment(lastStart, MusicTheory.chordName(last.first, last.second)))
+        }
+        return out.take(96)
+    }
+
+    private fun estimateTimeSignature(flux: List<Float>, bpm: Float, sampleRate: Int): String {
+        if (bpm <= 0f || flux.size < 32) return ""
+        val mean = flux.average().toFloat()
+        val env = FloatArray(flux.size) { flux[it] - mean }
+        val frameRate = sampleRate.toFloat() / HOP
+        val beatFrames = (60f * frameRate / bpm).roundToInt().coerceAtLeast(1)
+        fun correlation(lag: Int): Float {
+            if (lag <= 0 || lag >= env.size) return 0f
+            var sum = 0f
+            for (i in 0 until env.size - lag) sum += env[i] * env[i + lag]
+            return sum
+        }
+        return if (correlation(beatFrames * 4) >= correlation(beatFrames * 3)) "4/4" else "3/4"
     }
 
     private fun estimatePitch(mag: FloatArray, freqs: FloatArray): Pair<Float, Float> {
@@ -305,11 +374,12 @@ object AudioDsp {
         return bpm to strength
     }
 
-    private fun estimateKey(chroma: FloatArray): Pair<Int, Boolean> {
+    private fun estimateKey(chroma: FloatArray): Triple<Int, Boolean, Float> {
         val sum = chroma.sum()
-        if (sum <= 0f) return 0 to false
+        if (sum <= 0f) return Triple(0, false, 0f)
         val norm = FloatArray(12) { chroma[it] / sum }
         var bestScore = -Float.MAX_VALUE
+        var secondScore = -Float.MAX_VALUE
         var bestKey = 0
         var bestMinor = false
         for (rot in 0 until 12) {
@@ -321,16 +391,27 @@ object AudioDsp {
                 minor += c * MINOR[i]
             }
             if (major > bestScore) {
+                secondScore = bestScore
                 bestScore = major
                 bestKey = rot
                 bestMinor = false
+            } else if (major > secondScore) {
+                secondScore = major
             }
             if (minor > bestScore) {
+                secondScore = bestScore
                 bestScore = minor
                 bestKey = rot
                 bestMinor = true
+            } else if (minor > secondScore) {
+                secondScore = minor
             }
         }
-        return bestKey to bestMinor
+        val confidence = if (bestScore > 0f) {
+            ((bestScore - secondScore.coerceAtLeast(0f)) / bestScore).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+        return Triple(bestKey, bestMinor, confidence)
     }
 }

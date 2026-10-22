@@ -75,6 +75,22 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                             MusicTheory.diatonicChords(features.keyIndex, features.minor)
                                 .joinToString(" · "),
                         )
+                        if (features.timeSignature.isNotBlank()) {
+                            FeatureRow(
+                                stringResource(R.string.time_signature),
+                                features.timeSignature,
+                            )
+                        }
+                        FeatureRow(
+                            stringResource(R.string.key_confidence),
+                            "${(features.keyConfidence * 100).roundToInt()}%",
+                        )
+                        if (features.chords.isNotEmpty()) {
+                            FeatureRow(
+                                stringResource(R.string.chord_progression),
+                                features.chords.map { it.name }.take(16).joinToString(" · "),
+                            )
+                        }
                         if (features.scaleName.isNotBlank()) {
                             FeatureRow(
                                 stringResource(R.string.scale_label),

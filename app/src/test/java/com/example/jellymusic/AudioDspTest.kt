@@ -52,6 +52,7 @@ class AudioDspTest {
         val features = AudioDsp.analyze(samples, sampleRate)
         assertTrue("bpm=${features.bpm}", features.bpm in 100f..150f)
         assertTrue(features.beatStrength > 0.05f)
+        assertEquals("4/4", features.timeSignature)
     }
 
     @Test

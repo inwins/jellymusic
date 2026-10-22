@@ -73,6 +73,39 @@ object MusicTheory {
         return best
     }
 
+
+    private val MAJOR_TRIAD = intArrayOf(0, 4, 7)
+    private val MINOR_TRIAD = intArrayOf(0, 3, 7)
+
+    /** Best-matching major/minor triad for a chroma vector, or null when too flat. */
+    fun chordForChroma(chroma: List<Float>): Pair<Int, Boolean>? {
+        if (chroma.size < 12) return null
+        val total = chroma.sum()
+        if (total <= 0f) return null
+        val normalized = FloatArray(12) { chroma[it] / total }
+        var bestRoot = -1
+        var bestMinor = false
+        var bestScore = 0f
+        for (root in 0 until 12) {
+            for (minor in listOf(false, true)) {
+                val triad = if (minor) MINOR_TRIAD else MAJOR_TRIAD
+                var inTriad = 0f
+                for (interval in triad) inTriad += normalized[(root + interval) % 12]
+                val outOfTriad = (1f - inTriad).coerceAtLeast(0f)
+                val score = inTriad - 0.6f * outOfTriad
+                if (score > bestScore) {
+                    bestScore = score
+                    bestRoot = root
+                    bestMinor = minor
+                }
+            }
+        }
+        return if (bestRoot >= 0) bestRoot to bestMinor else null
+    }
+
+    fun chordName(root: Int, minor: Boolean): String =
+        noteName(root) + if (minor) "m" else ""
+
     fun midiName(midi: Int): String =
         noteName(midi % 12) + (midi / 12 - 1)
 

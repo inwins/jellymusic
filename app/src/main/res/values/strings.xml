@@ -54,6 +54,7 @@
     <string name="diatonic_chords">Diatonic chords</string>
     <string name="harmonic_match">Harmonic match</string>
     <string name="generate_harmonic_mix">Build harmonic queue</string>
+    <string name="visualizer_style">Visualizer style</string>
     <string name="visualizer">Visualizer</string>
     <string name="visualizer_permission">Microphone permission is needed for the visualizer</string>
     <string name="scale_label">Scale</string>
@@ -63,6 +64,9 @@
     <string name="pitch_range">Range</string>
     <string name="note_count">Notes</string>
     <string name="reanalyze_hint">Re-analyze to detect scale and melody</string>
+    <string name="time_signature">Time signature</string>
+    <string name="key_confidence">Key confidence</string>
+    <string name="chord_progression">Chords</string>
     <string name="audio_features">Audio features</string>
     <string name="analyze">Analyze</string>
     <string name="analyzing">Analyzing…</string>
@@ -188,6 +192,11 @@
     <string name="dynamic_color_note">Requires Android 12 or newer</string>
     <string name="amoled_dark">AMOLED black</string>
     <string name="playback">Playback</string>
+    <string name="crossfade">Crossfade</string>
+    <string name="crossfade_off">Off</string>
+    <string name="crossfade_seconds">%1$d s</string>
+    <string name="normalize_volume">Loudness normalization</string>
+    <string name="report_playback">Report playback to server</string>
     <string name="fade_in_out">Fade in/out</string>
     <string name="fade_duration">%1$d ms</string>
     <string name="remember_position">Remember playback position</string>

@@ -253,6 +253,55 @@ fun SettingsScreen(state: AppState) {
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Text(
+                        stringResource(R.string.crossfade),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = state.settings.crossfadeMs == 0,
+                        onClick = { state.settings.crossfadeMs = 0 },
+                        label = { Text(stringResource(R.string.crossfade_off)) },
+                    )
+                    listOf(2000, 4000, 6000).forEach { ms ->
+                        FilterChip(
+                            selected = state.settings.crossfadeMs == ms,
+                            onClick = { state.settings.crossfadeMs = ms },
+                            label = { Text(stringResource(R.string.crossfade_seconds, ms / 1000)) },
+                        )
+                    }
+                }
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.normalize_volume),
+                    checked = state.settings.normalizeVolume,
+                    onCheckedChange = { state.settings.normalizeVolume = it },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.report_playback),
+                    checked = state.settings.reportPlayback,
+                    onCheckedChange = { state.settings.reportPlayback = it },
+                )
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             stringResource(R.string.remember_position),

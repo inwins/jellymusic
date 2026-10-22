@@ -65,6 +65,33 @@ class AppSettings(context: Context) {
             prefs.edit().putBoolean(KEY_AMOLED_DARK, value).apply()
         }
 
+    private var crossfadeState by mutableStateOf(prefs.getInt(KEY_CROSSFADE_MS, 0))
+
+    var crossfadeMs: Int
+        get() = crossfadeState
+        set(value) {
+            crossfadeState = value
+            prefs.edit().putInt(KEY_CROSSFADE_MS, value).apply()
+        }
+
+    private var normalizeState by mutableStateOf(prefs.getBoolean(KEY_NORMALIZE, false))
+
+    var normalizeVolume: Boolean
+        get() = normalizeState
+        set(value) {
+            normalizeState = value
+            prefs.edit().putBoolean(KEY_NORMALIZE, value).apply()
+        }
+
+    private var reportPlaybackState by mutableStateOf(prefs.getBoolean(KEY_REPORT_PLAYBACK, true))
+
+    var reportPlayback: Boolean
+        get() = reportPlaybackState
+        set(value) {
+            reportPlaybackState = value
+            prefs.edit().putBoolean(KEY_REPORT_PLAYBACK, value).apply()
+        }
+
     private var fadeEnabledState by mutableStateOf(prefs.getBoolean(KEY_FADE_ENABLED, true))
 
     var fadeEnabled: Boolean
@@ -100,6 +127,49 @@ class AppSettings(context: Context) {
             playbackSpeedState = value
             prefs.edit().putFloat(KEY_PLAYBACK_SPEED, value).apply()
         }
+
+    fun lyricsOffsetFor(itemId: String): Long {
+        val raw = prefs.getString(KEY_LYRICS_OFFSETS, null) ?: return lyricsOffsetMs
+        return runCatching { org.json.JSONObject(raw).optLong(itemId, lyricsOffsetMs) }
+            .getOrDefault(lyricsOffsetMs)
+    }
+
+    fun setLyricsOffset(itemId: String, offsetMs: Long) {
+        val raw = prefs.getString(KEY_LYRICS_OFFSETS, null)
+        val json = runCatching {
+            if (raw.isNullOrBlank()) org.json.JSONObject() else org.json.JSONObject(raw)
+        }.getOrDefault(org.json.JSONObject())
+        json.put(itemId, offsetMs)
+        prefs.edit().putString(KEY_LYRICS_OFFSETS, json.toString()).apply()
+    }
+
+    var albumSort: String
+        get() = prefs.getString(KEY_ALBUM_SORT, "NAME") ?: "NAME"
+        set(value) = prefs.edit().putString(KEY_ALBUM_SORT, value).apply()
+
+    var albumDescending: Boolean
+        get() = prefs.getBoolean(KEY_ALBUM_DESC, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALBUM_DESC, value).apply()
+
+    var albumsFavoritesOnly: Boolean
+        get() = prefs.getBoolean(KEY_ALBUM_FAV, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALBUM_FAV, value).apply()
+
+    var artistSort: String
+        get() = prefs.getString(KEY_ARTIST_SORT, "NAME") ?: "NAME"
+        set(value) = prefs.edit().putString(KEY_ARTIST_SORT, value).apply()
+
+    var artistDescending: Boolean
+        get() = prefs.getBoolean(KEY_ARTIST_DESC, false)
+        set(value) = prefs.edit().putBoolean(KEY_ARTIST_DESC, value).apply()
+
+    var artistsFavoritesOnly: Boolean
+        get() = prefs.getBoolean(KEY_ARTIST_FAV, false)
+        set(value) = prefs.edit().putBoolean(KEY_ARTIST_FAV, value).apply()
+
+    var visualizerStyle: Int
+        get() = prefs.getInt(KEY_VISUALIZER_STYLE, 2)
+        set(value) = prefs.edit().putInt(KEY_VISUALIZER_STYLE, value).apply()
 
     private fun loadThemeMode(): ThemeMode = runCatching {
         ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)!!)
@@ -206,6 +276,17 @@ class AppSettings(context: Context) {
         const val KEY_AUTO_WIFI_ONLY = "auto_download_wifi_only"
         const val KEY_AUTO_MAX_MB = "auto_download_max_mb"
         const val KEY_MANUAL_OFFLINE = "manual_offline"
+        const val KEY_CROSSFADE_MS = "crossfade_ms"
+        const val KEY_NORMALIZE = "normalize_volume"
+        const val KEY_REPORT_PLAYBACK = "report_playback"
+        const val KEY_LYRICS_OFFSETS = "lyrics_offsets"
+        const val KEY_ALBUM_SORT = "album_sort"
+        const val KEY_ALBUM_DESC = "album_desc"
+        const val KEY_ALBUM_FAV = "album_fav_only"
+        const val KEY_ARTIST_SORT = "artist_sort"
+        const val KEY_ARTIST_DESC = "artist_desc"
+        const val KEY_ARTIST_FAV = "artist_fav_only"
+        const val KEY_VISUALIZER_STYLE = "visualizer_style"
         const val KEY_VISUALIZER = "visualizer_enabled"
         const val KEY_LYRICS_FONT_SCALE = "lyrics_font_scale"
         const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"

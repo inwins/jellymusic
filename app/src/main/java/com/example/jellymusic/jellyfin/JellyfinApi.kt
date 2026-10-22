@@ -481,6 +481,52 @@ class JellyfinApi(
         }
     }
 
+    suspend fun reportPlaybackStart(itemId: String, positionMs: Long) =
+        reportPlayback("/Sessions/Playing", itemId, positionMs, false)
+
+    suspend fun reportPlaybackProgress(itemId: String, positionMs: Long, isPaused: Boolean) =
+        reportPlayback("/Sessions/Playing/Progress", itemId, positionMs, isPaused)
+
+    suspend fun reportPlaybackStopped(itemId: String, positionMs: Long) =
+        reportPlayback("/Sessions/Playing/Stopped", itemId, positionMs, false)
+
+    private suspend fun reportPlayback(
+        path: String,
+        itemId: String,
+        positionMs: Long,
+        isPaused: Boolean,
+    ) = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("ItemId", itemId)
+            .put("PositionTicks", positionMs * 10_000L)
+            .put("IsPaused", isPaused)
+            .put("CanSeek", true)
+            .put("PlayMethod", "Transcode")
+        val request = Request.Builder()
+            .url("$baseUrl$path")
+            .auth()
+            .post(payload.toString().toRequestBody(jsonMediaType))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException(describeError(response.code, response.body?.string().orEmpty()))
+            }
+        }
+    }
+
+    suspend fun markPlayed(itemId: String) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("$baseUrl/Users/$userId/PlayedItems/$itemId")
+            .auth()
+            .post(ByteArray(0).toRequestBody())
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException(describeError(response.code, response.body?.string().orEmpty()))
+            }
+        }
+    }
+
     suspend fun setFavorite(itemId: String, favorite: Boolean) = withContext(Dispatchers.IO) {
         val request = if (favorite) {
             Request.Builder()

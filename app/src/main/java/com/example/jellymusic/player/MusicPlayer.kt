@@ -24,6 +24,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import com.example.jellymusic.data.AppSettings
+import com.example.jellymusic.data.AudioFeaturesStore
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.StreamCache
 import com.example.jellymusic.data.baseItemFromJson
@@ -59,6 +60,7 @@ class MusicPlayer(
     context: Context,
     private val streamCache: StreamCache,
     private val settings: AppSettings,
+    private val audioFeatures: AudioFeaturesStore? = null,
 ) {
     var api: JellyfinApi? = null
     var downloadStore: DownloadStore? = null
@@ -160,6 +162,14 @@ class MusicPlayer(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var ticker: Job? = null
+    private var normalizeGain = 1f
+    private var crossfadeArmed = false
+    private var progressTick = 0
+    private var lastStartedId: String? = null
+
+    var onPlaybackStart: ((BaseItem) -> Unit)? = null
+    var onPlaybackProgress: ((BaseItem, Long) -> Unit)? = null
+    var onPlaybackStop: ((BaseItem, Boolean) -> Unit)? = null
     private var stopping = false
     private var lastRecordedId: String? = null
 
@@ -170,7 +180,13 @@ class MusicPlayer(
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
-                if (!playing) {
+                if (playing) {
+                    val item = current
+                    if (item != null && item.id != lastStartedId) {
+                        lastStartedId = item.id
+                        onPlaybackStart?.invoke(item)
+                    }
+                } else {
                     saveResumePosition()
                 }
                 saveState()
@@ -187,6 +203,9 @@ class MusicPlayer(
                     if (!stopping && item != null && item.id != lastRecordedId) {
                         recordPlay(item, isFullyListened())
                         lastRecordedId = item.id
+                    }
+                    if (item != null) {
+                        onPlaybackStop?.invoke(item, true)
                     }
                     if (sleepAtEndOfTrack) {
                         sleepAtEndOfTrack = false
@@ -208,9 +227,21 @@ class MusicPlayer(
                         position = maxOf(positionMs, exo.currentPosition),
                     )
                 }
+                if (!stopping && previous != null) {
+                    onPlaybackStop?.invoke(previous, false)
+                }
                 updateCurrent()
                 repeatA = null
                 repeatB = null
+                if (!stopping && settings.crossfadeMs > 0 && exo.playWhenReady) {
+                    exo.volume = 0f
+                    fadeTo(1f, settings.crossfadeMs.toLong())
+                }
+                val started = current
+                if (!stopping && started != null && exo.playWhenReady) {
+                    lastStartedId = started.id
+                    onPlaybackStart?.invoke(started)
+                }
                 if (sleepAtEndOfTrack) {
                     sleepAtEndOfTrack = false
                     fadeTo(0f, settings.fadeMs.toLong()) {
@@ -303,6 +334,8 @@ class MusicPlayer(
     }
 
     fun stop() {
+        current?.let { onPlaybackStop?.invoke(it, false) }
+        lastStartedId = null
         saveResumePosition()
         stopping = true
         fadeJob?.cancel()
@@ -348,8 +381,17 @@ class MusicPlayer(
         val index = exo.currentMediaItemIndex
         playIndex = index
         current = queue.getOrNull(index)
+        normalizeGain = gainFor(current)
+        crossfadeArmed = false
         durationMs = knownDuration()
         startTicker()
+    }
+
+    private fun gainFor(item: BaseItem?): Float {
+        if (item == null || !settings.normalizeVolume) return 1f
+        val db = audioFeatures?.get(item.id)?.loudnessDb ?: return 1f
+        val gain = Math.pow(10.0, (-16.0 - db) / 20.0).toFloat()
+        return gain.coerceIn(0.1f, 1f)
     }
 
     private fun knownDuration(): Long {
@@ -409,20 +451,21 @@ class MusicPlayer(
 
     private fun fadeTo(target: Float, durationMs: Long, onEnd: (() -> Unit)? = null) {
         fadeJob?.cancel()
+        val goal = (target * normalizeGain).coerceIn(0f, 1f)
         val start = exo.volume
         if (!settings.fadeEnabled || durationMs <= 0L) {
-            exo.volume = target
+            exo.volume = goal
             onEnd?.invoke()
             return
         }
         fadeJob = scope.launch {
             val steps = (durationMs / 30L).coerceAtLeast(1L).toInt()
             for (i in 1..steps) {
-                val value = start + (target - start) * i / steps
+                val value = start + (goal - start) * i / steps
                 exo.volume = value.coerceIn(0f, 1f)
                 delay(durationMs / steps)
             }
-            exo.volume = target.coerceIn(0f, 1f)
+            exo.volume = goal
             onEnd?.invoke()
         }
     }
@@ -620,6 +663,17 @@ class MusicPlayer(
                     if (tickCount % 20 == 0) {
                         saveState()
                         saveResumePosition()
+                    }
+                    progressTick++
+                    if (progressTick % 60 == 0) {
+                        current?.let { onPlaybackProgress?.invoke(it, positionMs) }
+                    }
+                }
+                if (settings.crossfadeMs > 0 && !crossfadeArmed && exo.isPlaying) {
+                    val remaining = durationMs - positionMs
+                    if (remaining in 1..settings.crossfadeMs.toLong()) {
+                        crossfadeArmed = true
+                        fadeTo(0f, remaining)
                     }
                 }
                 val now = System.currentTimeMillis()

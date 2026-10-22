@@ -1,5 +1,14 @@
 Jellyfin Music — Changelog
 
+2.11.0
+- Chord progression recognition (major/minor triads per beat) and time-signature estimate
+- Key confidence shown in the analysis
+- Crossfade between tracks and loudness (ReplayGain) normalization
+- Optional playback reporting to the Jellyfin server (scrobble + mark played)
+- Visualizer styles (bars / ring / both), a full-screen visualizer page and key-coloured spectrum
+- Per-song lyrics offset memory
+- Albums/artists: favourite button and remembered sort/filter
+
 2.10.0
 - Automatic melody transcription: predominant-pitch tracking with median filtering and beat-grid quantisation
 - Scale recognition (major/minor modes, church modes, pentatonic, blues) shown with its notes

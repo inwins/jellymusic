@@ -23,6 +23,20 @@ data class NoteEvent(
     }
 }
 
+data class ChordSegment(
+    val startMs: Long,
+    val name: String,
+) {
+    fun toJson(): JSONObject = JSONObject().put("startMs", startMs).put("name", name)
+
+    companion object {
+        fun fromJson(json: JSONObject): ChordSegment = ChordSegment(
+            startMs = json.optLong("startMs"),
+            name = json.optString("name"),
+        )
+    }
+}
+
 data class AudioFeatures(
     val bpm: Float,
     val keyIndex: Int,
@@ -41,6 +55,9 @@ data class AudioFeatures(
     val pitchMin: Int = 0,
     val pitchMax: Int = 0,
     val pitchHistogram: List<Float> = emptyList(),
+    val chords: List<ChordSegment> = emptyList(),
+    val timeSignature: String = "",
+    val keyConfidence: Float = 0f,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("bpm", bpm.toDouble())
@@ -60,6 +77,9 @@ data class AudioFeatures(
         .put("pitchMax", pitchMax)
         .put("pitchHistogram", JSONArray(pitchHistogram))
         .put("notes", JSONArray().apply { notes.forEach { put(it.toJson()) } })
+        .put("chords", JSONArray().apply { chords.forEach { put(it.toJson()) } })
+        .put("timeSignature", timeSignature)
+        .put("keyConfidence", keyConfidence.toDouble())
 
     companion object {
         fun fromJson(json: JSONObject): AudioFeatures {
@@ -91,6 +111,11 @@ data class AudioFeatures(
                 pitchHistogram = json.optJSONArray("pitchHistogram")?.let { array ->
                     (0 until array.length()).map { array.optDouble(it).toFloat() }
                 } ?: emptyList(),
+                chords = json.optJSONArray("chords")?.let { array ->
+                    (0 until array.length()).map { ChordSegment.fromJson(array.getJSONObject(it)) }
+                } ?: emptyList(),
+                timeSignature = json.optString("timeSignature"),
+                keyConfidence = json.optDouble("keyConfidence").toFloat(),
             )
         }
 

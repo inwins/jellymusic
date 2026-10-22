@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -229,8 +230,11 @@ fun NowPlayingScreen(state: AppState) {
     val favorite = state.favorites.isFavorite(current)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(
+        pageCount = { if (state.settings.visualizerEnabled) 3 else 2 },
+    )
     val artUrl = state.artworkUrl(current, 800)
+    val lyricsOffset = state.settings.lyricsOffsetFor(current.id)
     val accent = state.audioFeatures.get(current.id)?.let {
         Color.hsv(MusicTheory.camelotHue(it.keyIndex, it.minor), 0.55f, 0.95f)
     } ?: MaterialTheme.colorScheme.primary
@@ -299,9 +303,9 @@ fun NowPlayingScreen(state: AppState) {
                 title = current.name,
                 lyrics = lyrics,
                 positionMs = player.positionMs,
-                offsetMs = state.settings.lyricsOffsetMs,
+                offsetMs = lyricsOffset,
                 fontScale = state.settings.lyricsFontScale,
-                onOffsetChange = { state.settings.lyricsOffsetMs = it },
+                onOffsetChange = { state.settings.setLyricsOffset(current.id, it) },
                 onFontScaleChange = { state.settings.lyricsFontScale = it },
                 onClose = { lyricsFullScreen = false },
                 onSeek = { player.seekTo(it) },
@@ -417,6 +421,14 @@ fun NowPlayingScreen(state: AppState) {
                                 onClick = {
                                     moreMenuOpen = false
                                     showAbDialog = true
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.visualizer_style)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    state.settings.visualizerStyle =
+                                        (state.settings.visualizerStyle + 1) % 3
                                 },
                             )
                             DropdownMenuItem(
@@ -592,15 +604,23 @@ fun NowPlayingScreen(state: AppState) {
                             artUrl = artUrl,
                             bands = state.visualizer.bands.value,
                             accent = accent,
-                            showVisualizer = state.settings.visualizerEnabled,
+                            showRing = state.settings.visualizerEnabled &&
+                                state.settings.visualizerStyle != 0,
+                            showBars = state.settings.visualizerEnabled &&
+                                state.settings.visualizerStyle != 1,
                         ) {
                             scope.launch { pagerState.animateScrollToPage(1) }
                         }
 
+                        2 -> VisualizerPage(
+                            bands = state.visualizer.bands.value,
+                            accent = accent,
+                        )
+
                         else -> LyricsView(
                             lyrics = lyrics,
                             positionMs = player.positionMs,
-                            offsetMs = state.settings.lyricsOffsetMs,
+                            offsetMs = lyricsOffset,
                             fontScale = state.settings.lyricsFontScale,
                             fullScreen = false,
                             onExpand = { lyricsFullScreen = true },
@@ -618,7 +638,7 @@ fun NowPlayingScreen(state: AppState) {
                         .padding(vertical = 2.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    repeat(2) { index ->
+                    repeat(pagerState.pageCount) { index ->
                         val selected = pagerState.currentPage == index
                         Box(
                             Modifier
@@ -926,7 +946,8 @@ private fun CoverPage(
     artUrl: String?,
     bands: FloatArray,
     accent: Color,
-    showVisualizer: Boolean,
+    showRing: Boolean,
+    showBars: Boolean,
     onShowLyrics: () -> Unit,
 ) {
     Column(
@@ -944,7 +965,7 @@ private fun CoverPage(
                 Modifier.size(side * 1.5f),
                 contentAlignment = Alignment.Center,
             ) {
-                if (showVisualizer) {
+                if (showRing) {
                     SpectrumRing(
                         bands = bands,
                         accent = accent,
@@ -962,7 +983,7 @@ private fun CoverPage(
                 }
             }
         }
-        if (showVisualizer) {
+        if (showBars) {
             SpectrumBars(
                 bands = bands,
                 accent = accent,
@@ -973,6 +994,33 @@ private fun CoverPage(
             )
             Spacer(Modifier.height(6.dp))
         }
+    }
+}
+
+@Composable
+private fun VisualizerPage(bands: FloatArray, accent: Color) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        SpectrumRing(
+            bands = bands,
+            accent = accent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+        )
+        Spacer(Modifier.height(24.dp))
+        SpectrumBars(
+            bands = bands,
+            accent = accent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp),
+        )
     }
 }
 

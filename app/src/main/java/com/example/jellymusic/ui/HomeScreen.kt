@@ -363,9 +363,19 @@ fun AlbumsTab(state: AppState) {
     }
 
     val items = remember { mutableStateListOf<BaseItem>() }
-    var sort by remember { mutableStateOf(AlbumSort.NAME) }
-    var descending by remember { mutableStateOf(false) }
-    var favoritesOnly by remember { mutableStateOf(false) }
+    var sort by remember {
+        mutableStateOf(
+            runCatching { AlbumSort.valueOf(state.settings.albumSort) }
+                .getOrDefault(AlbumSort.NAME),
+        )
+    }
+    var descending by remember { mutableStateOf(state.settings.albumDescending) }
+    var favoritesOnly by remember { mutableStateOf(state.settings.albumsFavoritesOnly) }
+    LaunchedEffect(sort, descending, favoritesOnly) {
+        state.settings.albumSort = sort.name
+        state.settings.albumDescending = descending
+        state.settings.albumsFavoritesOnly = favoritesOnly
+    }
     var startIndex by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var endReached by remember { mutableStateOf(false) }
@@ -540,9 +550,19 @@ fun ArtistsTab(state: AppState) {
     }
 
     val items = remember { mutableStateListOf<BaseItem>() }
-    var sort by remember { mutableStateOf(ArtistSort.NAME) }
-    var descending by remember { mutableStateOf(false) }
-    var favoritesOnly by remember { mutableStateOf(false) }
+    var sort by remember {
+        mutableStateOf(
+            runCatching { ArtistSort.valueOf(state.settings.artistSort) }
+                .getOrDefault(ArtistSort.NAME),
+        )
+    }
+    var descending by remember { mutableStateOf(state.settings.artistDescending) }
+    var favoritesOnly by remember { mutableStateOf(state.settings.artistsFavoritesOnly) }
+    LaunchedEffect(sort, descending, favoritesOnly) {
+        state.settings.artistSort = sort.name
+        state.settings.artistDescending = descending
+        state.settings.artistsFavoritesOnly = favoritesOnly
+    }
     var startIndex by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var endReached by remember { mutableStateOf(false) }
