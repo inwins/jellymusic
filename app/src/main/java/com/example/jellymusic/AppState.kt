@@ -25,6 +25,7 @@ import com.example.jellymusic.data.DiskCache
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.FavoriteStore
 import com.example.jellymusic.data.LocalMusicStore
+import com.example.jellymusic.data.PlaybackReportStore
 import com.example.jellymusic.data.LocalPlaylistStore
 import com.example.jellymusic.data.SearchHistoryStore
 import com.example.jellymusic.data.SessionStore
@@ -54,6 +55,7 @@ class AppState(private val context: Context) {
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
     val ratings = RatingStore(context)
+    val playbackReports = PlaybackReportStore(context)
     val localMusic = LocalMusicStore(context)
     val localPlaylists = LocalPlaylistStore(context)
     val searchHistory = SearchHistoryStore(context)
@@ -78,26 +80,54 @@ class AppState(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    private var flushingReports = false
+
     init {
         player.onPlaybackStart = { item ->
             if (settings.reportPlayback && item.localUri == null) {
-                scope.launch { runCatching { api?.reportPlaybackStart(item.id, player.positionMs) } }
+                playbackReports.enqueue("start", item.id, player.positionMs)
+                flushPlaybackReports()
             }
         }
         player.onPlaybackProgress = { item, position ->
             if (settings.reportPlayback && item.localUri == null) {
-                scope.launch {
-                    runCatching { api?.reportPlaybackProgress(item.id, position, !player.isPlaying) }
-                }
+                playbackReports.enqueue("progress", item.id, position)
+                flushPlaybackReports()
             }
         }
         player.onPlaybackStop = { item, fully ->
             if (settings.reportPlayback && item.localUri == null) {
-                scope.launch {
-                    runCatching { api?.reportPlaybackStopped(item.id, player.positionMs) }
-                    if (fully) runCatching { api?.markPlayed(item.id) }
-                }
+                playbackReports.enqueue("stop", item.id, player.positionMs)
+                if (fully) playbackReports.enqueue("played", item.id, 0)
+                flushPlaybackReports()
             }
+        }
+    }
+
+    fun flushPlaybackReports() {
+        if (flushingReports) return
+        val client = api ?: return
+        if (!isOnline.value) return
+        if (playbackReports.size() == 0) return
+        flushingReports = true
+        scope.launch {
+            val reports = playbackReports.peekAll()
+            val remaining = mutableListOf<com.example.jellymusic.data.PlaybackReport>()
+            for (report in reports) {
+                val ok = runCatching {
+                    when (report.type) {
+                        "start" -> client.reportPlaybackStart(report.itemId, report.positionMs)
+                        "progress" -> client.reportPlaybackProgress(
+                            report.itemId, report.positionMs, !player.isPlaying,
+                        )
+                        "stop" -> client.reportPlaybackStopped(report.itemId, report.positionMs)
+                        "played" -> client.markPlayed(report.itemId)
+                    }
+                }.isSuccess
+                if (!ok) remaining.add(report)
+            }
+            playbackReports.replace(remaining)
+            flushingReports = false
         }
     }
 
@@ -109,6 +139,7 @@ class AppState(private val context: Context) {
             lastServerCheckAt = 0
             if (wasOffline) {
                 scope.launch {
+                    flushPlaybackReports()
                     syncOfflineChanges()
                     refreshSignal.value += 1
                 }

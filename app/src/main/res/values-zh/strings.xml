@@ -93,6 +93,9 @@
     <string name="reanalyze">重新分析</string>
     <string name="no_audio_features">暂无已分析歌曲</string>
     <string name="now_playing">正在播放</string>
+    <string name="save_as_playlist">保存为歌单</string>
+    <string name="shuffle_remaining">随机剩余</string>
+    <string name="search_queue">搜索队列</string>
     <string name="queue">播放队列</string>
     <string name="no_lyrics">暂无歌词</string>
     <string name="exit_fullscreen_lyrics">退出全屏歌词</string>
@@ -278,6 +281,10 @@
     <string name="scanning">扫描中…</string>
     <string name="no_local_music">暂无本地音乐</string>
     <string name="local_music_count">本地音乐 %1$d 首</string>
+    <string name="pause">暂停</string>
+    <string name="resume">继续</string>
+    <string name="storage_usage">占用 %1$s</string>
+    <string name="pending_downloads">%1$d 待下载</string>
     <string name="downloaded_songs">已下载</string>
     <string name="cached_songs">已缓存</string>
     <string name="no_cached_songs">暂无缓存歌曲</string>

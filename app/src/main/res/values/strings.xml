@@ -93,6 +93,9 @@
     <string name="reanalyze">Re-analyze</string>
     <string name="no_audio_features">No analyzed songs yet</string>
     <string name="now_playing">Now playing</string>
+    <string name="save_as_playlist">Save as playlist</string>
+    <string name="shuffle_remaining">Shuffle remaining</string>
+    <string name="search_queue">Search queue</string>
     <string name="queue">Play queue</string>
     <string name="no_lyrics">No lyrics</string>
     <string name="exit_fullscreen_lyrics">Exit full-screen lyrics</string>
@@ -278,6 +281,10 @@
     <string name="scanning">Scanning…</string>
     <string name="no_local_music">No local music yet</string>
     <string name="local_music_count">%1$d local songs</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="storage_usage">%1$s used</string>
+    <string name="pending_downloads">%1$d pending</string>
     <string name="downloaded_songs">Downloaded</string>
     <string name="cached_songs">Cached</string>
     <string name="no_cached_songs">No cached songs yet</string>

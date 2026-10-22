@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.15.0
+- Offline playback reports are queued and sent when the network returns
+- Download pause/resume, storage usage and pending count
+- Queue: search, shuffle remaining and save as playlist
+
 2.14.0
 - Instant mix / radio from any song (Jellyfin InstantMix)
 - 0-5 star ratings and smart playlists (recently played / most played / favourites / high rated)

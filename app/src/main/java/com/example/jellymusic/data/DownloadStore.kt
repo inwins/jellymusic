@@ -48,6 +48,8 @@ class DownloadStore(
     val progress = mutableStateMapOf<String, Float>()
     val errors = mutableStateMapOf<String, String>()
     val migration = mutableStateOf<MigrationState?>(null)
+    val paused = mutableStateOf(false)
+    private val activeItems = java.util.concurrent.ConcurrentHashMap<String, BaseItem>()
     val directoryLabel = mutableStateOf(settings.downloadDirLabel)
 
     val isMigrating: Boolean get() = migration.value != null
@@ -124,15 +126,33 @@ class DownloadStore(
         download(api, item)
     }
 
+    fun pauseAll() {
+        paused.value = true
+        if (activeItems.isNotEmpty()) {
+            pending.addAll(0, activeItems.values.toList())
+            activeItems.clear()
+        }
+        jobs.values.forEach { it.cancel() }
+        savePending()
+    }
+
+    fun resumeAll(api: JellyfinApi) {
+        paused.value = false
+        pump(api)
+    }
+
     private fun pump(api: JellyfinApi) {
+        if (paused.value) return
         while (active < maxConcurrent && pending.isNotEmpty()) {
             val item = pending.removeAt(0)
             savePending()
             active++
+            activeItems[item.id] = item
             val job = scope.launch {
                 try {
                     downloadNow(api, item)
                 } finally {
+                    activeItems.remove(item.id)
                     jobs.remove(item.id)
                     active = (active - 1).coerceAtLeast(0)
                     pump(api)

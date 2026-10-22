@@ -12,6 +12,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
@@ -203,6 +204,7 @@ fun NowPlayingScreen(state: AppState) {
     var lyricsFullScreen by rememberSaveable { mutableStateOf(false) }
     var dragPosition by remember { mutableStateOf<Float?>(null) }
     var showQueue by remember { mutableStateOf(false) }
+    var queueQuery by remember { mutableStateOf("") }
     var moreMenuOpen by remember { mutableStateOf(false) }
     var showSleepDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -864,12 +866,46 @@ fun NowPlayingScreen(state: AppState) {
                     .fillMaxHeight(0.72f)
                     .padding(horizontal = 8.dp),
             ) {
-                Text(
-                    stringResource(R.string.queue),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.queue),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 16.dp),
+                    )
+                    TextButton(onClick = { player.shuffleUpcoming() }) {
+                        Text(stringResource(R.string.shuffle_remaining))
+                    }
+                    TextButton(onClick = {
+                        val playlist = state.localPlaylists.create("播放队列")
+                        player.queue.forEach { state.localPlaylists.addItem(playlist.id, it) }
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.sync_done),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }) {
+                        Text(stringResource(R.string.save_as_playlist))
+                    }
+                }
+                OutlinedTextField(
+                    value = queueQuery,
+                    onValueChange = { queueQuery = it },
+                    placeholder = { Text(stringResource(R.string.search_queue)) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                 )
-                QueueList(player = player, modifier = Modifier.weight(1f))
+                QueueList(
+                    player = player,
+                    query = queueQuery,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -1118,6 +1154,7 @@ private fun SpectrumBars(
 private fun QueueList(
     player: MusicPlayer,
     modifier: Modifier = Modifier,
+    query: String = "",
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -1125,6 +1162,64 @@ private fun QueueList(
     var dragDelta by remember { mutableFloatStateOf(0f) }
     var targetIndex by remember { mutableStateOf<Int?>(null) }
     var didScroll by remember { mutableStateOf(false) }
+
+    if (query.isNotBlank()) {
+        val filtered = player.queue.withIndex().filter { entry ->
+            entry.value.name.contains(query, true) ||
+                entry.value.trackArtist?.contains(query, true) == true
+        }
+        LazyColumn(state = listState, modifier = modifier) {
+            itemsIndexed(filtered) { _, entry ->
+                val item = entry.value
+                val isCurrent = entry.index == player.playIndex
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { player.jumpTo(entry.index) }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = if (isCurrent) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            item.name,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isCurrent) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                        Text(
+                            item.trackArtist.orEmpty(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        item.durationMs?.let { formatDuration(it) }.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        return
+    }
 
     LaunchedEffect(player.current?.id, player.queue.size) {
         if (!didScroll && player.queue.isNotEmpty()) {

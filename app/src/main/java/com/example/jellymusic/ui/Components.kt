@@ -377,3 +377,12 @@ fun alphabetIndexKey(name: String): Char {
     val upper = first.uppercaseChar()
     return if (upper in 'A'..'Z') upper else '#'
 }
+
+fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return String.format(java.util.Locale.US, "%.0f KB", kb)
+    val mb = kb / 1024.0
+    if (mb < 1024) return String.format(java.util.Locale.US, "%.1f MB", mb)
+    return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
+}

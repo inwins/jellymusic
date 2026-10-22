@@ -338,6 +338,22 @@ class MusicPlayer(
         }
     }
 
+    fun shuffleUpcoming() {
+        val index = exo.currentMediaItemIndex
+        if (index < 0 || queue.size - index < 3) return
+        val head = queue.take(index + 1)
+        val tail = queue.drop(index + 1).shuffled()
+        val newQueue = head + tail
+        val position = exo.currentPosition
+        val playing = exo.playWhenReady
+        queue = newQueue
+        exo.setMediaItems(newQueue.map(::toMediaItem), index, position)
+        exo.playWhenReady = playing
+        exo.prepare()
+        updateCurrent()
+        positionMs = position
+    }
+
     fun stop() {
         current?.let { onPlaybackStop?.invoke(it, false) }
         lastStartedId = null

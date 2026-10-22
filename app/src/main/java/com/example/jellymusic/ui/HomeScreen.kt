@@ -964,6 +964,41 @@ fun DownloadsTab(state: AppState) {
         Row(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val bytes = state.downloads.totalBytes()
+            Text(
+                stringResource(R.string.storage_usage, formatBytes(bytes)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            if (state.downloads.pendingCount() > 0) {
+                Text(
+                    stringResource(R.string.pending_downloads, state.downloads.pendingCount()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = {
+                    if (state.downloads.paused.value) {
+                        state.api?.let { state.downloads.resumeAll(it) }
+                    } else {
+                        state.downloads.pauseAll()
+                    }
+                }) {
+                    Text(
+                        stringResource(
+                            if (state.downloads.paused.value) R.string.resume else R.string.pause,
+                        ),
+                    )
+                }
+            }
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
