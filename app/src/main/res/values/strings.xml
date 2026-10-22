@@ -66,6 +66,7 @@
     <string name="visualizer_permission">Microphone permission is needed for the visualizer</string>
     <string name="scale_label">Scale</string>
     <string name="scale_notes">Scale notes</string>
+    <string name="melody_confidence">Melody confidence</string>
     <string name="melody_label">Melody</string>
     <string name="jianpu_label">Jianpu</string>
     <string name="pitch_range">Range</string>

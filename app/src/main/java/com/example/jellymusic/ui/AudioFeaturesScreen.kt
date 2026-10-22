@@ -192,6 +192,10 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                                 stringResource(R.string.note_count),
                                 features.notes.size.toString(),
                             )
+                            FeatureRow(
+                                stringResource(R.string.melody_confidence),
+                                "${(features.melodyConfidence * 100).roundToInt()}%",
+                            )
                             PianoRoll(
                                 notes = features.notes,
                                 modifier = Modifier
@@ -216,6 +220,7 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                     }
 
                     val harmonic = state.audioFeatures.harmonicallySimilar(item)
+                        .filter { state.localMusic.isAvailable(it.first) }
                     item {
                         Row(
                             Modifier
@@ -257,6 +262,7 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                     }
 
                     val similar = state.audioFeatures.similar(item)
+                        .filter { state.localMusic.isAvailable(it) }
                     item { SectionTitle(stringResource(R.string.similar_by_sound)) }
                     if (similar.isEmpty()) {
                         item {

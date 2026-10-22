@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.17.2
+- Analysis lists skip songs whose local file is missing
+- Show melody confidence alongside the transcription
+
 2.17.1
 - Fix: "Save as playlist" from the queue no longer creates duplicate playlists
 - Key/scale confidence now reports the in-key energy ratio (meaningful percentage)

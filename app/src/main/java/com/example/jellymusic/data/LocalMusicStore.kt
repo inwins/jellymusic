@@ -190,6 +190,13 @@ class LocalMusicStore(context: Context) {
 
     fun folderOf(itemId: String): String? = folders[itemId]
 
+    fun isAvailable(item: BaseItem): Boolean {
+        val raw = item.localUri ?: return true
+        return runCatching {
+            DocumentFile.fromSingleUri(appContext, Uri.parse(raw))?.exists() == true
+        }.getOrDefault(false)
+    }
+
     fun setOverride(itemId: String, title: String, artist: String, album: String) {
         overrides[itemId] = Triple(title, artist, album)
         val index = songs.indexOfFirst { it.id == itemId }

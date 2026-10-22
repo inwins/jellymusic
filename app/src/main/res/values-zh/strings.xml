@@ -66,6 +66,7 @@
     <string name="visualizer_permission">可视化需要麦克风权限</string>
     <string name="scale_label">音阶</string>
     <string name="scale_notes">音阶音</string>
+    <string name="melody_confidence">旋律置信度</string>
     <string name="melody_label">旋律</string>
     <string name="jianpu_label">简谱</string>
     <string name="pitch_range">音域</string>

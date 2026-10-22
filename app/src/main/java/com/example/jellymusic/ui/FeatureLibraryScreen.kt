@@ -39,7 +39,7 @@ fun FeatureLibraryScreen(state: AppState) {
             .distinct()
             .sortedBy { it.dropLast(1).toIntOrNull() ?: 0 }
     }
-    val filtered = entries.filter { (_, features) ->
+    val filtered = entries.filter { (item, features) ->
         val bpmOk = when (bpmFilter) {
             1 -> features.bpm < 90f
             2 -> features.bpm in 90f..120f
@@ -49,7 +49,7 @@ fun FeatureLibraryScreen(state: AppState) {
         }
         val keyOk = keyFilter == null ||
             MusicTheory.camelot(features.keyIndex, features.minor) == keyFilter
-        bpmOk && keyOk
+        bpmOk && keyOk && state.localMusic.isAvailable(item)
     }
 
     Column(Modifier.fillMaxSize()) {

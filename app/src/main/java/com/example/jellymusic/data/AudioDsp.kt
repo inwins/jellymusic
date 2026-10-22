@@ -178,6 +178,12 @@ object AudioDsp {
             pitchHistogram = pitchHistogram,
             chords = buildChords(frameChroma, bpm, sampleRate),
             timeSignature = estimateTimeSignature(flux, bpm, sampleRate),
+            melodyConfidence = run {
+                val voiced = frameSalience.filterIndexed { index, _ ->
+                    framePitch.getOrElse(index) { 0f } > 0f
+                }
+                if (voiced.isEmpty()) 0f else voiced.average().toFloat().coerceIn(0f, 1f)
+            },
             keyConfidence = run {
                 val intervals = if (minor) {
                     intArrayOf(0, 2, 3, 5, 7, 8, 10)
