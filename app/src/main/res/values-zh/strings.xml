@@ -41,6 +41,7 @@
     <string name="recently_added">最近添加</string>
     <string name="favorite_songs">收藏歌曲</string>
     <string name="no_playlists">暂无播放列表</string>
+    <string name="related_artists">相关艺术家</string>
     <string name="artist">艺术家</string>
     <string name="no_downloads_hint">暂无下载。在歌曲或专辑页点下载按钮即可离线播放。</string>
     <string name="downloaded_count">已下载 %1$d 首</string>
@@ -209,6 +210,7 @@
     <string name="crossfade">切歌淡入淡出</string>
     <string name="crossfade_off">关闭</string>
     <string name="crossfade_seconds">%1$d 秒</string>
+    <string name="gestures">封面手势</string>
     <string name="prefetch_next">预加载下一首</string>
     <string name="skip_silence">跳过静音</string>
     <string name="normalize_volume">响度归一化</string>
@@ -251,6 +253,11 @@
     <string name="lyrics_offset_value">%1$s 秒</string>
     <string name="desktop_lyrics">桌面歌词</string>
     <string name="desktop_lyrics_permission">请先授予悬浮窗权限，然后再次开启桌面歌词</string>
+    <string name="audio_effects">音效增强</string>
+    <string name="bass_boost">低音增强</string>
+    <string name="virtualizer">环绕声</string>
+    <string name="loudness_boost">音量增强</string>
+    <string name="strength">强度</string>
     <string name="equalizer">均衡器</string>
     <string name="equalizer_enable">启用均衡器</string>
     <string name="equalizer_preset">预设</string>
@@ -267,6 +274,11 @@
     <string name="cached_tap_to_download">已缓存，点击下载</string>
     <string name="sync_to_server">将同步保存到 Jellyfin 服务器</string>
     <string name="instant_mix">即时电台</string>
+    <string name="listening_stats">收听统计</string>
+    <string name="top_artists">最常听艺术家</string>
+    <string name="top_albums">最常听专辑</string>
+    <string name="library_songs">曲库歌曲</string>
+    <string name="total_plays">总播放次数</string>
     <string name="smart_playlists">智能歌单</string>
     <string name="recent_played">最近播放</string>
     <string name="most_played">最常播放</string>

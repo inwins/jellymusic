@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -165,6 +168,12 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
         Loaded(key = "artist-${screen.id}", load = {
             state.requireApi().getArtistAlbums(screen.id)
         }) { albums ->
+            var similarArtists by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
+            LaunchedEffect(screen.id) {
+                similarArtists = runCatching {
+                    state.requireApi().getSimilarArtists(screen.id, 20)
+                }.getOrDefault(emptyList())
+            }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(12.dp),
@@ -172,6 +181,45 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (similarArtists.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column {
+                            SectionTitle(stringResource(R.string.related_artists))
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                similarArtists.forEach { artist ->
+                                    item(key = "similar-${artist.id}") {
+                                        Column(
+                                            Modifier
+                                                .width(96.dp)
+                                                .clickable {
+                                                    state.navigate(
+                                                        Screen.Artist(artist.id, artist.name),
+                                                    )
+                                                },
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                        ) {
+                                            FillArtwork(
+                                                state.artworkUrl(artist, 300),
+                                                Modifier.size(96.dp),
+                                                cornerRadius = 48.dp,
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                artist.name,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 items(albums, key = { it.id }) { album ->
                     CardItem(
                         item = album,

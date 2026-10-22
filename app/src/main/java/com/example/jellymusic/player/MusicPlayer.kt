@@ -121,7 +121,7 @@ class MusicPlayer(
         .setHandleAudioBecomingNoisy(true)
         .build()
 
-    val equalizer = EqualizerController(exo)
+    val equalizer = EqualizerController(exo, settings)
 
     var repeatA by mutableStateOf<Long?>(null)
         private set

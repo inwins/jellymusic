@@ -23,6 +23,7 @@ data class BaseItem(
     val playlistItemId: String? = null,
     val childCount: Int? = null,
     val localUri: String? = null,
+    val playCount: Int? = null,
 ) {
     val durationMs: Long? get() = runTimeTicks?.div(10_000)
     val primaryArtist: String? get() = albumArtist ?: artists.firstOrNull()
@@ -53,6 +54,7 @@ fun parseBaseItem(json: JSONObject): BaseItem {
         collectionType = json.optString("CollectionType").takeIf { it.isNotBlank() },
         playlistItemId = json.optString("PlaylistItemId").takeIf { it.isNotBlank() },
         childCount = json.optInt("ChildCount").takeIf { it >= 0 },
+        playCount = json.optJSONObject("UserData")?.optInt("PlayCount")?.takeIf { it > 0 },
     )
 }
 

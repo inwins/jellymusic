@@ -1,5 +1,11 @@
 Jellyfin Music — Changelog
 
+2.17.0
+- Listening stats dashboard (library size, total plays, top artists/albums, recently played)
+- Cover gestures: double-tap to play/pause, swipe up/down for next/previous
+- Audio effects: bass boost, virtualizer and volume boost
+- Related artists on the artist page
+
 2.16.0
 - Audio info card (codec, bitrate, sample rate, duration, size)
 - Preload the next track into the playback cache

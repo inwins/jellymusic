@@ -62,6 +62,7 @@ fun MainScaffold(state: AppState) {
                     Screen.Favorites -> FavoritesScreen(state)
                     Screen.FeatureLibrary -> FeatureLibraryScreen(state)
                     Screen.SmartPlaylists -> SmartPlaylistScreen(state)
+                    Screen.ListeningStats -> ListeningStatsScreen(state)
                     is Screen.AudioFeatures -> AudioFeaturesScreen(state, current)
                     Screen.Genres -> GenresScreen(state)
                     Screen.Folders -> FoldersScreen(state)

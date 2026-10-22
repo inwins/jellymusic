@@ -74,6 +74,39 @@ class AppSettings(context: Context) {
             prefs.edit().putInt(KEY_CROSSFADE_MS, value).apply()
         }
 
+    var bassBoostEnabled: Boolean
+        get() = prefs.getBoolean(KEY_BASS, false)
+        set(value) = prefs.edit().putBoolean(KEY_BASS, value).apply()
+
+    var bassBoostStrength: Int
+        get() = prefs.getInt(KEY_BASS_STRENGTH, 500)
+        set(value) = prefs.edit().putInt(KEY_BASS_STRENGTH, value).apply()
+
+    var virtualizerEnabled: Boolean
+        get() = prefs.getBoolean(KEY_VIRTUALIZER, false)
+        set(value) = prefs.edit().putBoolean(KEY_VIRTUALIZER, value).apply()
+
+    var virtualizerStrength: Int
+        get() = prefs.getInt(KEY_VIRTUALIZER_STRENGTH, 500)
+        set(value) = prefs.edit().putInt(KEY_VIRTUALIZER_STRENGTH, value).apply()
+
+    var loudnessBoostEnabled: Boolean
+        get() = prefs.getBoolean(KEY_LOUDNESS, false)
+        set(value) = prefs.edit().putBoolean(KEY_LOUDNESS, value).apply()
+
+    var loudnessBoostMb: Int
+        get() = prefs.getInt(KEY_LOUDNESS_MB, 500)
+        set(value) = prefs.edit().putInt(KEY_LOUDNESS_MB, value).apply()
+
+    private var gesturesState by mutableStateOf(prefs.getBoolean(KEY_GESTURES, true))
+
+    var gesturesEnabled: Boolean
+        get() = gesturesState
+        set(value) {
+            gesturesState = value
+            prefs.edit().putBoolean(KEY_GESTURES, value).apply()
+        }
+
     private var prefetchState by mutableStateOf(prefs.getBoolean(KEY_PREFETCH, true))
 
     var prefetchNext: Boolean
@@ -298,6 +331,13 @@ class AppSettings(context: Context) {
         const val KEY_NORMALIZE = "normalize_volume"
         const val KEY_SKIP_SILENCE = "skip_silence"
         const val KEY_PREFETCH = "prefetch_next"
+        const val KEY_GESTURES = "gestures_enabled"
+        const val KEY_BASS = "bass_boost"
+        const val KEY_BASS_STRENGTH = "bass_strength"
+        const val KEY_VIRTUALIZER = "virtualizer"
+        const val KEY_VIRTUALIZER_STRENGTH = "virtualizer_strength"
+        const val KEY_LOUDNESS = "loudness_boost"
+        const val KEY_LOUDNESS_MB = "loudness_mb"
         const val KEY_REPORT_PLAYBACK = "report_playback"
         const val KEY_LYRICS_OFFSETS = "lyrics_offsets"
         const val KEY_ALBUM_SORT = "album_sort"

@@ -23,6 +23,7 @@ fun BaseItem.toJson(): JSONObject = JSONObject()
     .put("collectionType", collectionType)
     .put("childCount", childCount)
     .put("localUri", localUri)
+    .put("playCount", playCount)
     .put("artists", JSONArray(artists))
 
 fun baseItemFromJson(json: JSONObject): BaseItem {
@@ -50,5 +51,6 @@ fun baseItemFromJson(json: JSONObject): BaseItem {
         collectionType = json.optString("collectionType").takeIf { it.isNotBlank() },
         childCount = json.optInt("childCount", -1).takeIf { it >= 0 },
         localUri = json.optString("localUri").takeIf { it.isNotBlank() },
+        playCount = json.optInt("playCount").takeIf { it > 0 },
     )
 }

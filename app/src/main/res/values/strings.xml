@@ -41,6 +41,7 @@
     <string name="recently_added">Recently added</string>
     <string name="favorite_songs">Favorite songs</string>
     <string name="no_playlists">No playlists</string>
+    <string name="related_artists">Related artists</string>
     <string name="artist">Artist</string>
     <string name="no_downloads_hint">No downloads yet. Tap the download button on a song or album to play offline.</string>
     <string name="downloaded_count">%1$d downloaded</string>
@@ -209,6 +210,7 @@
     <string name="crossfade">Crossfade</string>
     <string name="crossfade_off">Off</string>
     <string name="crossfade_seconds">%1$d s</string>
+    <string name="gestures">Cover gestures</string>
     <string name="prefetch_next">Preload next track</string>
     <string name="skip_silence">Skip silence</string>
     <string name="normalize_volume">Loudness normalization</string>
@@ -251,6 +253,11 @@
     <string name="lyrics_offset_value">%1$s s</string>
     <string name="desktop_lyrics">Desktop lyrics</string>
     <string name="desktop_lyrics_permission">Grant the overlay permission, then enable desktop lyrics again</string>
+    <string name="audio_effects">Audio effects</string>
+    <string name="bass_boost">Bass boost</string>
+    <string name="virtualizer">Virtualizer</string>
+    <string name="loudness_boost">Volume boost</string>
+    <string name="strength">Strength</string>
     <string name="equalizer">Equalizer</string>
     <string name="equalizer_enable">Enable equalizer</string>
     <string name="equalizer_preset">Preset</string>
@@ -267,6 +274,11 @@
     <string name="cached_tap_to_download">Cached, tap to download</string>
     <string name="sync_to_server">Saved to the Jellyfin server</string>
     <string name="instant_mix">Instant mix</string>
+    <string name="listening_stats">Listening stats</string>
+    <string name="top_artists">Top artists</string>
+    <string name="top_albums">Top albums</string>
+    <string name="library_songs">Library songs</string>
+    <string name="total_plays">Total plays</string>
     <string name="smart_playlists">Smart playlists</string>
     <string name="recent_played">Recently played</string>
     <string name="most_played">Most played</string>

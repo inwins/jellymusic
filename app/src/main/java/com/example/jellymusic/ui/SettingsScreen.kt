@@ -286,6 +286,13 @@ fun SettingsScreen(state: AppState) {
             }
             item {
                 SettingSwitchRow(
+                    title = stringResource(R.string.gestures),
+                    checked = state.settings.gesturesEnabled,
+                    onCheckedChange = { state.settings.gesturesEnabled = it },
+                )
+            }
+            item {
+                SettingSwitchRow(
                     title = stringResource(R.string.prefetch_next),
                     checked = state.settings.prefetchNext,
                     onCheckedChange = { state.settings.prefetchNext = it },
@@ -340,6 +347,64 @@ fun SettingsScreen(state: AppState) {
                 }
             }
 
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                SettingsSectionTitle(stringResource(R.string.audio_effects))
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.bass_boost),
+                    checked = state.settings.bassBoostEnabled,
+                    onCheckedChange = { state.player.equalizer.setBassBoost(it) },
+                )
+            }
+            if (state.settings.bassBoostEnabled) {
+                item {
+                    Slider(
+                        value = state.settings.bassBoostStrength / 1000f,
+                        onValueChange = {
+                            state.player.equalizer.setBassStrength((it * 1000).toInt())
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.virtualizer),
+                    checked = state.settings.virtualizerEnabled,
+                    onCheckedChange = { state.player.equalizer.setVirtualizer(it) },
+                )
+            }
+            if (state.settings.virtualizerEnabled) {
+                item {
+                    Slider(
+                        value = state.settings.virtualizerStrength / 1000f,
+                        onValueChange = {
+                            state.player.equalizer.setVirtualizerStrength((it * 1000).toInt())
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.loudness_boost),
+                    checked = state.settings.loudnessBoostEnabled,
+                    onCheckedChange = { state.player.equalizer.setLoudnessBoost(it) },
+                )
+            }
+            if (state.settings.loudnessBoostEnabled) {
+                item {
+                    Slider(
+                        value = state.settings.loudnessBoostMb / 1500f,
+                        onValueChange = {
+                            state.player.equalizer.setLoudnessGain((it * 1500).toInt())
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
             item {
                 Row(
                     Modifier
@@ -774,6 +839,34 @@ fun SettingsScreen(state: AppState) {
             }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { state.navigate(Screen.ListeningStats) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Analytics,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        stringResource(R.string.listening_stats),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
             item {
                 Row(

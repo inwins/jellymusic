@@ -34,6 +34,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -645,6 +647,10 @@ fun NowPlayingScreen(state: AppState) {
                                 state.settings.visualizerStyle != 0,
                             showBars = state.settings.visualizerEnabled &&
                                 state.settings.visualizerStyle != 1,
+                            gesturesEnabled = state.settings.gesturesEnabled,
+                            onTogglePlay = { player.toggle() },
+                            onNext = { player.next() },
+                            onPrevious = { player.previous() },
                         ) {
                             scope.launch { pagerState.animateScrollToPage(1) }
                         }
@@ -1019,6 +1025,10 @@ private fun CoverPage(
     accent: Color,
     showRing: Boolean,
     showBars: Boolean,
+    gesturesEnabled: Boolean,
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
     onShowLyrics: () -> Unit,
 ) {
     Column(
@@ -1048,7 +1058,32 @@ private fun CoverPage(
                         .size(side)
                         .shadow(18.dp, RoundedCornerShape(20.dp))
                         .clip(RoundedCornerShape(20.dp))
-                        .clickable(onClick = onShowLyrics),
+                        .pointerInput(gesturesEnabled) {
+                            if (!gesturesEnabled) return@pointerInput
+                            detectTapGestures(
+                                onTap = { onShowLyrics() },
+                                onDoubleTap = { onTogglePlay() },
+                            )
+                        }
+                        .pointerInput(gesturesEnabled) {
+                            if (!gesturesEnabled) return@pointerInput
+                            var total = 0f
+                            detectVerticalDragGestures(
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    total += dragAmount
+                                },
+                                onDragEnd = {
+                                    if (total < -80f) {
+                                        onNext()
+                                    } else if (total > 80f) {
+                                        onPrevious()
+                                    }
+                                    total = 0f
+                                },
+                                onDragCancel = { total = 0f },
+                            )
+                        },
                 ) {
                     Artwork(artUrl, side, 20.dp)
                 }

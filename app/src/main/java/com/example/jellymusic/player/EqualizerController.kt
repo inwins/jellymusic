@@ -1,6 +1,9 @@
 package com.example.jellymusic.player
 
+import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
+import android.media.audiofx.Virtualizer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -9,9 +12,23 @@ import androidx.compose.runtime.setValue
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.jellymusic.data.AppSettings
 
-class EqualizerController(private val player: ExoPlayer) : Player.Listener {
+class EqualizerController(
+    private val player: ExoPlayer,
+    private val settings: AppSettings,
+) : Player.Listener {
     private var effect: Equalizer? = null
+    private var bassBoost: BassBoost? = null
+    private var virtualizer: Virtualizer? = null
+    private var loudness: LoudnessEnhancer? = null
+
+    var bassAvailable by mutableStateOf(false)
+        private set
+    var virtualAvailable by mutableStateOf(false)
+        private set
+    var loudnessAvailable by mutableStateOf(false)
+        private set
 
     var available by mutableStateOf(false)
         private set
@@ -69,6 +86,24 @@ class EqualizerController(private val player: ExoPlayer) : Player.Listener {
             effect = equalizer
             available = true
             error = null
+            runCatching {
+                val bass = BassBoost(0, sessionId)
+                bassBoost = bass
+                bassAvailable = true
+                applyBass()
+            }.onFailure { bassAvailable = false }
+            runCatching {
+                val virtual = Virtualizer(0, sessionId)
+                virtualizer = virtual
+                virtualAvailable = true
+                applyVirtualizer()
+            }.onFailure { virtualAvailable = false }
+            runCatching {
+                val enhancer = LoudnessEnhancer(sessionId)
+                loudness = enhancer
+                loudnessAvailable = true
+                applyLoudness()
+            }.onFailure { loudnessAvailable = false }
         }.onFailure {
             available = false
             error = it.message
@@ -104,10 +139,76 @@ class EqualizerController(private val player: ExoPlayer) : Player.Listener {
         }
     }
 
+    private fun applyBass() {
+        runCatching {
+            bassBoost?.let {
+                it.setStrength(settings.bassBoostStrength.toShort())
+                it.enabled = settings.bassBoostEnabled
+            }
+        }
+    }
+
+    private fun applyVirtualizer() {
+        runCatching {
+            virtualizer?.let {
+                it.setStrength(settings.virtualizerStrength.toShort())
+                it.enabled = settings.virtualizerEnabled
+            }
+        }
+    }
+
+    private fun applyLoudness() {
+        runCatching {
+            loudness?.let {
+                it.setTargetGain(settings.loudnessBoostMb)
+                it.enabled = settings.loudnessBoostEnabled
+            }
+        }
+    }
+
+    fun setBassBoost(enabled: Boolean) {
+        settings.bassBoostEnabled = enabled
+        applyBass()
+    }
+
+    fun setBassStrength(value: Int) {
+        settings.bassBoostStrength = value
+        applyBass()
+    }
+
+    fun setVirtualizer(enabled: Boolean) {
+        settings.virtualizerEnabled = enabled
+        applyVirtualizer()
+    }
+
+    fun setVirtualizerStrength(value: Int) {
+        settings.virtualizerStrength = value
+        applyVirtualizer()
+    }
+
+    fun setLoudnessBoost(enabled: Boolean) {
+        settings.loudnessBoostEnabled = enabled
+        applyLoudness()
+    }
+
+    fun setLoudnessGain(value: Int) {
+        settings.loudnessBoostMb = value
+        applyLoudness()
+    }
+
     private fun releaseEffect() {
         runCatching { effect?.release() }
+        runCatching { bassBoost?.release() }
+        runCatching { virtualizer?.release() }
+        runCatching { loudness?.release() }
         effect = null
+        bassBoost = null
+        virtualizer = null
+        loudness = null
         available = false
+        bassAvailable = false
+        virtualAvailable = false
+        loudnessAvailable = false
     }
 
     fun release() {

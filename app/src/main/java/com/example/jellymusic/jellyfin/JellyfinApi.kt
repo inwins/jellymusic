@@ -191,6 +191,37 @@ class JellyfinApi(
         ),
     )
 
+    suspend fun getSimilarArtists(artistId: String, limit: Int = 20): List<BaseItem> = items(
+        "/Items/$artistId/Similar",
+        mapOf(
+            "UserId" to (userId ?: ""),
+            "Limit" to limit.toString(),
+            "IncludeItemTypes" to "MusicArtist",
+        ),
+    )
+
+    suspend fun getAudioCount(): Int = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(
+                buildUrl(
+                    "/Items",
+                    mapOf(
+                        "Recursive" to "true",
+                        "IncludeItemTypes" to "Audio",
+                        "Limit" to "0",
+                    ),
+                ),
+            )
+            .auth()
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IOException(describeError(response.code, body))
+            JSONObject(body).optInt("TotalRecordCount")
+        }
+    }
+
     suspend fun getRecentlyPlayed(limit: Int = 50): List<BaseItem> = items(
         "/Users/$userId/Items",
         mapOf(
