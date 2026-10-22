@@ -234,6 +234,7 @@ fun HomeTab(state: AppState) {
 
 @Composable
 fun OfflineHome(state: AppState, onRetry: () -> Unit) {
+    val manualOffline = state.settings.manualOffline
     val downloadedMap = state.downloads.downloadedIds
     val items = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
 
@@ -245,34 +246,49 @@ fun OfflineHome(state: AppState, onRetry: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(stringResource(R.string.cannot_reach_server), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                stringResource(R.string.no_downloaded_songs),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            if (manualOffline) {
+                Text(
+                    stringResource(R.string.no_downloaded_songs),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    stringResource(R.string.cannot_reach_server),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(R.string.no_downloaded_songs),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            }
         }
         return
     }
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 4.dp, top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.offline_showing_downloads),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            if (manualOffline) {
+                SectionTitle(stringResource(R.string.downloaded_count, items.size))
+            } else {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 4.dp, top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.offline_showing_downloads),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+                }
             }
         }
         itemsIndexed(items) { index, item ->
@@ -288,8 +304,8 @@ fun OfflineHome(state: AppState, onRetry: () -> Unit) {
                 onToggleFavorite = { state.favorites.toggle(item) },
                 downloaded = true,
                 downloading = state.downloads.progress[id],
-                        downloadError = state.downloads.errors[id] != null,
-                        cached = state.streamCache.isCached(id),
+                downloadError = state.downloads.errors[id] != null,
+                cached = state.streamCache.isCached(id),
                 onDownload = { state.downloads.delete(item) },
                 onLongClick = { state.trackMenu = item },
             )
