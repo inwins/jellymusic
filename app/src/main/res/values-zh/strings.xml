@@ -56,6 +56,13 @@
     <string name="generate_harmonic_mix">生成和谐混音队列</string>
     <string name="visualizer">可视化</string>
     <string name="visualizer_permission">可视化需要麦克风权限</string>
+    <string name="scale_label">音阶</string>
+    <string name="scale_notes">音阶音</string>
+    <string name="melody_label">旋律</string>
+    <string name="jianpu_label">简谱</string>
+    <string name="pitch_range">音域</string>
+    <string name="note_count">音符数</string>
+    <string name="reanalyze_hint">重新分析以识别音阶与旋律</string>
     <string name="audio_features">音频特征</string>
     <string name="analyze">开始分析</string>
     <string name="analyzing">分析中…</string>

@@ -56,6 +56,13 @@
     <string name="generate_harmonic_mix">Build harmonic queue</string>
     <string name="visualizer">Visualizer</string>
     <string name="visualizer_permission">Microphone permission is needed for the visualizer</string>
+    <string name="scale_label">Scale</string>
+    <string name="scale_notes">Scale notes</string>
+    <string name="melody_label">Melody</string>
+    <string name="jianpu_label">Jianpu</string>
+    <string name="pitch_range">Range</string>
+    <string name="note_count">Notes</string>
+    <string name="reanalyze_hint">Re-analyze to detect scale and melody</string>
     <string name="audio_features">Audio features</string>
     <string name="analyze">Analyze</string>
     <string name="analyzing">Analyzing…</string>

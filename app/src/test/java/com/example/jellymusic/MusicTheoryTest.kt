@@ -55,6 +55,41 @@ class MusicTheoryTest {
     }
 
     @Test
+    fun detectsMajorScale() {
+        val chroma = List(12) { pc ->
+            if (pc in setOf(0, 2, 4, 5, 7, 9, 11)) 1f else 0.02f
+        }
+        val match = MusicTheory.detectScale(chroma)
+        assertEquals(0, match?.tonic)
+        assertEquals("大调", match?.scale?.name)
+    }
+
+    @Test
+    fun detectsPentatonicScale() {
+        val chroma = List(12) { pc ->
+            if (pc in setOf(9, 0, 2, 4, 7)) 1f else 0f
+        }
+        val match = MusicTheory.detectScale(chroma)
+        assertEquals(setOf("A", "C", "D", "E", "G"), match?.notes?.toSet())
+    }
+
+    @Test
+    fun jianpuMapping() {
+        assertEquals("1", MusicTheory.toJianpu(60, 0))
+        assertEquals("2", MusicTheory.toJianpu(62, 0))
+        assertEquals("1'", MusicTheory.toJianpu(72, 0))
+        assertEquals("1,", MusicTheory.toJianpu(48, 0))
+        assertEquals("b3", MusicTheory.toJianpu(72, 9))
+        assertEquals("5", MusicTheory.toJianpu(76, 9))
+    }
+
+    @Test
+    fun midiNaming() {
+        assertEquals("C4", MusicTheory.midiName(60))
+        assertEquals(69, MusicTheory.hzToMidi(440f))
+    }
+
+    @Test
     fun harmonicScorePrefersCompatibleKeys() {
         val same = MusicTheory.harmonicScore(0, false, 120f, 0, false, 122f)
         val far = MusicTheory.harmonicScore(0, false, 120f, 6, false, 170f)

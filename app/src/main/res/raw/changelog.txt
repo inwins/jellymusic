@@ -1,5 +1,11 @@
 Jellyfin Music — Changelog
 
+2.10.0
+- Automatic melody transcription: predominant-pitch tracking with median filtering and beat-grid quantisation
+- Scale recognition (major/minor modes, church modes, pentatonic, blues) shown with its notes
+- Piano-roll melody view and numbered notation (jianpu) with octave marks
+- Improved key/scale matching and cleaner note segmentation
+
 2.9.0
 - Real-time spectrum visualizer on Now Playing: a radial ring around the cover plus spectrum bars, coloured by the song key
 - Music theory: Camelot key wheel, relative key, diatonic chords and a 12-note chroma chart

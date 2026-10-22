@@ -1,6 +1,7 @@
 package com.example.jellymusic.data
 
 import com.example.jellymusic.util.Fft
+import com.example.jellymusic.util.MusicTheory
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
@@ -49,7 +50,11 @@ object AudioDsp {
         val re = FloatArray(FRAME)
         val im = FloatArray(FRAME)
         val prevMag = FloatArray(bins)
+        val mag = FloatArray(bins)
         val flux = ArrayList<Float>()
+        val frameRms = ArrayList<Float>()
+        val framePitch = ArrayList<Float>()
+        val frameSalience = ArrayList<Float>()
         val chroma = FloatArray(12)
         val freqs = FloatArray(bins) { (it + 1) * sampleRate.toFloat() / FRAME }
 
@@ -73,24 +78,29 @@ object AudioDsp {
             var logSum = 0f
             var frameFlux = 0f
             for (k in 0 until bins) {
-                val mag = sqrt(re[k] * re[k] + im[k] * im[k])
-                magSum += mag
-                centroid += freqs[k] * mag
-                logSum += ln(mag + 1e-6f)
-                frameFlux += max(0f, mag - prevMag[k])
-                prevMag[k] = mag
+                val value = sqrt(re[k] * re[k] + im[k] * im[k])
+                mag[k] = value
+                magSum += value
+                centroid += freqs[k] * value
+                logSum += ln(value + 1e-6f)
+                frameFlux += max(0f, value - prevMag[k])
+                prevMag[k] = value
                 val f = freqs[k]
-                if (f in 300f..3400f) bandSum += mag
+                if (f in 300f..3400f) bandSum += value
                 if (f in 55f..2000f) {
                     val midi = 69.0 + 12.0 * (ln(f / 440f) / ln(2.0))
                     val pc = ((midi.roundToInt() % 12) + 12) % 12
-                    chroma[pc] += mag
+                    chroma[pc] += value
                 }
             }
             var rms = 0f
             for (i in 0 until FRAME) rms += samples[pos + i] * samples[pos + i]
             rms = sqrt(rms / FRAME)
             rmsSum += rms
+            frameRms.add(rms)
+            val (pitchHz, salience) = estimatePitch(mag, freqs)
+            framePitch.add(pitchHz)
+            frameSalience.add(salience)
             magSumAll += magSum
             centroidSum += if (magSum > 0f) centroid / magSum else 0f
             val arith = magSum / bins
@@ -121,6 +131,17 @@ object AudioDsp {
             List(12) { 0f }
         }
 
+        val scaleMatch = MusicTheory.detectScale(chromaNorm)
+        val noteEvents = buildNotes(framePitch, frameSalience, frameRms, sampleRate, bpm, scaleMatch)
+        val histogram = FloatArray(12)
+        noteEvents.forEach { histogram[((it.midi % 12) + 12) % 12] += it.durationMs.toFloat() }
+        val histogramSum = histogram.sum()
+        val pitchHistogram = if (histogramSum > 0f) {
+            histogram.map { it / histogramSum }
+        } else {
+            List(12) { 0f }
+        }
+
         return AudioFeatures(
             bpm = bpm,
             keyIndex = keyIndex,
@@ -132,7 +153,129 @@ object AudioDsp {
             beatStrength = beatStrength,
             chroma = chromaNorm,
             analyzedAt = System.currentTimeMillis(),
+            scaleTonic = scaleMatch?.tonic ?: 0,
+            scaleName = scaleMatch?.scale?.name ?: "",
+            scaleConfidence = scaleMatch?.confidence ?: 0f,
+            notes = noteEvents,
+            pitchMin = noteEvents.minOfOrNull { it.midi } ?: 0,
+            pitchMax = noteEvents.maxOfOrNull { it.midi } ?: 0,
+            pitchHistogram = pitchHistogram,
         )
+    }
+
+    private fun estimatePitch(mag: FloatArray, freqs: FloatArray): Pair<Float, Float> {
+        var minBin = 1
+        while (minBin < freqs.size && freqs[minBin] < 100f) minBin++
+        var maxBin = minBin
+        while (maxBin < freqs.size && freqs[maxBin] <= 1100f) maxBin++
+        if (minBin >= maxBin) return 0f to 0f
+        var mean = 0f
+        for (k in minBin until maxBin) mean += mag[k]
+        mean /= (maxBin - minBin)
+        var bestBin = -1
+        var best = 0f
+        for (k in minBin until maxBin) {
+            // harmonic summation (robust, avoids the underflow of a product)
+            var score = mag[k]
+            var harmonic = 2
+            while (harmonic <= 4) {
+                val index = k * harmonic
+                if (index >= mag.size) break
+                score += mag[index] / harmonic
+                harmonic++
+            }
+            if (score > best) {
+                best = score
+                bestBin = k
+            }
+        }
+        if (bestBin <= 0 || best <= 0f) return 0f to 0f
+        val salience = (mag[bestBin] / (mean + 1e-6f)).coerceIn(0f, 40f) / 40f
+        return freqs[bestBin] to salience
+    }
+
+    private fun buildNotes(
+        pitches: List<Float>,
+        salience: List<Float>,
+        rms: List<Float>,
+        sampleRate: Int,
+        bpm: Float,
+        scale: MusicTheory.ScaleMatch?,
+    ): List<NoteEvent> {
+        if (pitches.isEmpty()) return emptyList()
+        val frameMs = HOP * 1000L / sampleRate
+        val average = rms.average().toFloat()
+        val silence = average * 0.30f
+
+        // median filter over 5 frames to reject octave/noise outliers
+        val filtered = FloatArray(pitches.size)
+        for (i in pitches.indices) {
+            val window = ArrayList<Float>()
+            for (j in (i - 2).coerceAtLeast(0)..(i + 2).coerceAtMost(pitches.size - 1)) {
+                if (pitches[j] > 0f) window.add(pitches[j])
+            }
+            filtered[i] = if (window.isEmpty()) 0f else window.sorted()[window.size / 2]
+        }
+
+        val scalePcs = scale?.let { match ->
+            match.scale.intervals.map { (match.tonic + it) % 12 }.toSet()
+        }
+        data class Frame(val index: Int, val midi: Int)
+        val frames = ArrayList<Frame>()
+        for (i in filtered.indices) {
+            val hz = filtered[i]
+            if (hz <= 0f || rms[i] < silence || salience[i] < 0.25f) continue
+            var midi = MusicTheory.hzToMidi(hz)
+            if (midi < 0) continue
+            if (scalePcs != null) midi = snapToScale(midi, scalePcs)
+            frames.add(Frame(i, midi))
+        }
+        if (frames.isEmpty()) return emptyList()
+
+        val grid = if (bpm > 0f) (60_000f / bpm) / 2f else 250f
+        val minDuration = maxOf(90L, (grid * 0.5f).toLong())
+
+        val notes = ArrayList<NoteEvent>()
+        var startIndex = frames[0].index
+        var lastIndex = frames[0].index
+        var sum = frames[0].midi.toFloat()
+        var count = 1
+        var current = frames[0].midi
+        fun close() {
+            val duration = (lastIndex - startIndex + 1) * frameMs
+            if (duration >= minDuration) {
+                val quantized = (Math.round(duration.toFloat() / grid) * grid).toLong()
+                    .coerceAtLeast(minDuration)
+                notes.add(NoteEvent(startIndex * frameMs, quantized, (sum / count).toInt()))
+            }
+        }
+        for (f in frames.drop(1)) {
+            if (kotlin.math.abs(f.midi - current) <= 1) {
+                lastIndex = f.index
+                sum += f.midi
+                count++
+                current = (sum / count).toInt()
+            } else {
+                close()
+                startIndex = f.index
+                lastIndex = f.index
+                sum = f.midi.toFloat()
+                count = 1
+                current = f.midi
+            }
+        }
+        close()
+        return notes.take(400)
+    }
+
+    private fun snapToScale(midi: Int, pcs: Set<Int>): Int {
+        val pc = ((midi % 12) + 12) % 12
+        if (pc in pcs) return midi
+        for (delta in 1..2) {
+            if (((pc - delta) % 12 + 12) % 12 in pcs) return midi - delta
+            if (((pc + delta) % 12) % 12 in pcs) return midi + delta
+        }
+        return midi
     }
 
     private fun estimateTempo(flux: List<Float>, sampleRate: Int): Pair<Float, Float> {

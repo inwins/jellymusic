@@ -1,6 +1,11 @@
 package com.example.jellymusic.ui
 
 import android.net.Uri
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import com.example.jellymusic.data.NoteEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +75,23 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                             MusicTheory.diatonicChords(features.keyIndex, features.minor)
                                 .joinToString(" · "),
                         )
+                        if (features.scaleName.isNotBlank()) {
+                            FeatureRow(
+                                stringResource(R.string.scale_label),
+                                MusicTheory.noteName(features.scaleTonic) + " " +
+                                    features.scaleName,
+                            )
+                            FeatureRow(
+                                stringResource(R.string.scale_notes),
+                                MusicTheory.SCALES
+                                    .firstOrNull { it.name == features.scaleName }
+                                    ?.intervals
+                                    ?.joinToString(" ") {
+                                        MusicTheory.noteName(features.scaleTonic + it)
+                                    }
+                                    .orEmpty(),
+                            )
+                        }
                         FeatureRow(
                             stringResource(R.string.energy_label),
                             "${(features.energy * 100).roundToInt()}%",
@@ -109,6 +131,45 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                             TextButton(onClick = { state.audioFeatures.analyze(item, uri) }) {
                                 Text(stringResource(R.string.reanalyze))
                             }
+                        }
+                    }
+
+                    item { SectionTitle(stringResource(R.string.melody_label)) }
+                    if (features.notes.isEmpty()) {
+                        item {
+                            Text(
+                                stringResource(R.string.reanalyze_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        }
+                    } else {
+                        item {
+                            FeatureRow(
+                                stringResource(R.string.pitch_range),
+                                MusicTheory.midiName(features.pitchMin) + " – " +
+                                    MusicTheory.midiName(features.pitchMax),
+                            )
+                            FeatureRow(
+                                stringResource(R.string.note_count),
+                                features.notes.size.toString(),
+                            )
+                            PianoRoll(
+                                notes = features.notes,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .height(120.dp),
+                            )
+                            Text(
+                                stringResource(R.string.jianpu_label) + ": " +
+                                    features.notes.take(48).joinToString(" ") {
+                                        MusicTheory.toJianpu(it.midi, features.scaleTonic)
+                                    },
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
                         }
                     }
 
@@ -351,5 +412,30 @@ private fun FeatureRow(label: String, value: String) {
             textAlign = TextAlign.End,
             modifier = Modifier.weight(0.6f),
         )
+    }
+}
+
+@Composable
+private fun PianoRoll(notes: List<NoteEvent>, modifier: Modifier = Modifier) {
+    if (notes.isEmpty()) return
+    val minMidi = notes.minOf { it.midi }
+    val maxMidi = notes.maxOf { it.midi }
+    val span = (maxMidi - minMidi).coerceAtLeast(1)
+    val total = notes.maxOf { it.startMs + it.durationMs }.coerceAtLeast(1L)
+    val color = MaterialTheme.colorScheme.primary
+    Canvas(modifier) {
+        val barHeight = 7f
+        val usable = (size.height - barHeight).coerceAtLeast(1f)
+        notes.forEach { note ->
+            val x = (note.startMs.toFloat() / total) * size.width
+            val width = (note.durationMs.toFloat() / total) * size.width
+            val y = ((maxMidi - note.midi).toFloat() / span) * usable
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(x, y),
+                size = Size(width.coerceAtLeast(3f), barHeight),
+                cornerRadius = CornerRadius(2f, 2f),
+            )
+        }
     }
 }

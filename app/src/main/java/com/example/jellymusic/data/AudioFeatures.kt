@@ -4,6 +4,25 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.sqrt
 
+data class NoteEvent(
+    val startMs: Long,
+    val durationMs: Long,
+    val midi: Int,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("startMs", startMs)
+        .put("durationMs", durationMs)
+        .put("midi", midi)
+
+    companion object {
+        fun fromJson(json: JSONObject): NoteEvent = NoteEvent(
+            startMs = json.optLong("startMs"),
+            durationMs = json.optLong("durationMs"),
+            midi = json.optInt("midi"),
+        )
+    }
+}
+
 data class AudioFeatures(
     val bpm: Float,
     val keyIndex: Int,
@@ -15,6 +34,13 @@ data class AudioFeatures(
     val beatStrength: Float,
     val chroma: List<Float>,
     val analyzedAt: Long,
+    val scaleTonic: Int = 0,
+    val scaleName: String = "",
+    val scaleConfidence: Float = 0f,
+    val notes: List<NoteEvent> = emptyList(),
+    val pitchMin: Int = 0,
+    val pitchMax: Int = 0,
+    val pitchHistogram: List<Float> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("bpm", bpm.toDouble())
@@ -27,6 +53,13 @@ data class AudioFeatures(
         .put("beatStrength", beatStrength.toDouble())
         .put("chroma", JSONArray(chroma))
         .put("analyzedAt", analyzedAt)
+        .put("scaleTonic", scaleTonic)
+        .put("scaleName", scaleName)
+        .put("scaleConfidence", scaleConfidence.toDouble())
+        .put("pitchMin", pitchMin)
+        .put("pitchMax", pitchMax)
+        .put("pitchHistogram", JSONArray(pitchHistogram))
+        .put("notes", JSONArray().apply { notes.forEach { put(it.toJson()) } })
 
     companion object {
         fun fromJson(json: JSONObject): AudioFeatures {
@@ -47,6 +80,17 @@ data class AudioFeatures(
                 beatStrength = json.optDouble("beatStrength").toFloat(),
                 chroma = chroma,
                 analyzedAt = json.optLong("analyzedAt"),
+                scaleTonic = json.optInt("scaleTonic"),
+                scaleName = json.optString("scaleName"),
+                scaleConfidence = json.optDouble("scaleConfidence").toFloat(),
+                notes = json.optJSONArray("notes")?.let { array ->
+                    (0 until array.length()).map { NoteEvent.fromJson(array.getJSONObject(it)) }
+                } ?: emptyList(),
+                pitchMin = json.optInt("pitchMin"),
+                pitchMax = json.optInt("pitchMax"),
+                pitchHistogram = json.optJSONArray("pitchHistogram")?.let { array ->
+                    (0 until array.length()).map { array.optDouble(it).toFloat() }
+                } ?: emptyList(),
             )
         }
 

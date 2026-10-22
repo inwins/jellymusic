@@ -84,6 +84,26 @@ class AudioDspTest {
         assertEquals(original, AudioFeatures.fromJson(original.toJson()))
     }
 
+    @Test
+    fun detectsSimpleMelody() {
+        val samples = FloatArray(3 * sampleRate)
+        val notes = listOf(440.0, 523.25, 659.25) // A4, C5, E5
+        for (n in notes.indices) {
+            val start = n * sampleRate
+            for (i in 0 until sampleRate) {
+                val t = i.toDouble() / sampleRate
+                val envelope = if (i < 200) i / 200.0 else if (i > sampleRate - 400) (sampleRate - i) / 400.0 else 1.0
+                val value = sin(2.0 * PI * notes[n] * t) * 0.6 +
+                    sin(2.0 * PI * notes[n] * 2 * t) * 0.2
+                samples[start + i] = (value * envelope).toFloat()
+            }
+        }
+        val features = AudioDsp.analyze(samples, sampleRate)
+        assertTrue("notes=${features.notes.map { it.midi }}", features.notes.isNotEmpty())
+        assertTrue(features.pitchMax - features.pitchMin >= 5)
+        assertTrue(features.pitchHistogram.sum() > 0f)
+    }
+
     private fun features(bpm: Float) = AudioFeatures(
         bpm = bpm,
         keyIndex = 9,

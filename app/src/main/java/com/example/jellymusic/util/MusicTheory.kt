@@ -19,6 +19,99 @@ object MusicTheory {
         return ((number - 1) % 12) * 30f
     }
 
+
+    data class Scale(val name: String, val intervals: IntArray)
+
+    val SCALES = listOf(
+        Scale("大调", intArrayOf(0, 2, 4, 5, 7, 9, 11)),
+        Scale("自然小调", intArrayOf(0, 2, 3, 5, 7, 8, 10)),
+        Scale("和声小调", intArrayOf(0, 2, 3, 5, 7, 8, 11)),
+        Scale("旋律小调", intArrayOf(0, 2, 3, 5, 7, 9, 11)),
+        Scale("多利亚", intArrayOf(0, 2, 3, 5, 7, 9, 10)),
+        Scale("弗里吉亚", intArrayOf(0, 1, 3, 5, 7, 8, 10)),
+        Scale("利底亚", intArrayOf(0, 2, 4, 6, 7, 9, 11)),
+        Scale("混合利底亚", intArrayOf(0, 2, 4, 5, 7, 9, 10)),
+        Scale("洛克里亚", intArrayOf(0, 1, 3, 5, 6, 8, 10)),
+        Scale("大调五声", intArrayOf(0, 2, 4, 7, 9)),
+        Scale("小调五声", intArrayOf(0, 3, 5, 7, 10)),
+        Scale("布鲁斯", intArrayOf(0, 3, 5, 6, 7, 10)),
+    )
+
+    data class ScaleMatch(
+        val tonic: Int,
+        val scale: Scale,
+        val confidence: Float,
+    ) {
+        val notes: List<String> get() = scale.intervals.map { noteName(tonic + it) }
+    }
+
+    /** Best matching scale across all 12 rotations of every [SCALES] template. */
+    fun detectScale(chroma: List<Float>): ScaleMatch? {
+        if (chroma.size < 12) return null
+        val total = chroma.sum()
+        if (total <= 0f) return null
+        val normalized = FloatArray(12) { chroma[it] / total }
+        var best: ScaleMatch? = null
+        var bestScore = -1f
+        for (scale in SCALES) {
+            for (tonic in 0 until 12) {
+                var inScale = 0f
+                for (interval in scale.intervals) inScale += normalized[(tonic + interval) % 12]
+                val outOfScale = (1f - inScale).coerceAtLeast(0f)
+                // Favour templates that cover the most energy and penalise stray notes.
+                val score = inScale - 0.5f * outOfScale
+                val current = best
+                val better = score > bestScore + 1e-4f ||
+                    (kotlin.math.abs(score - bestScore) <= 1e-4f &&
+                        current != null && scale.intervals.size < current.scale.intervals.size)
+                if (current == null || better) {
+                    bestScore = score
+                    best = ScaleMatch(tonic, scale, score.coerceIn(0f, 1f))
+                }
+            }
+        }
+        return best
+    }
+
+    fun midiName(midi: Int): String =
+        noteName(midi % 12) + (midi / 12 - 1)
+
+    fun hzToMidi(hz: Float): Int {
+        if (hz <= 0f) return -1
+        return (69.0 + 12.0 * (kotlin.math.ln(hz / 440f) / kotlin.math.ln(2.0))).toInt()
+    }
+
+    private val MAJOR_DEGREE = mapOf(0 to "1", 2 to "2", 4 to "3", 5 to "4", 7 to "5", 9 to "6", 11 to "7")
+
+    /** Numbered notation (简谱) degree for a pitch class relative to the tonic. */
+    fun jianpuDegree(semitoneFromTonic: Int): String {
+        val s = ((semitoneFromTonic % 12) + 12) % 12
+        MAJOR_DEGREE[s]?.let { return it }
+        if (s == 3 || s == 8 || s == 10) {
+            MAJOR_DEGREE[(s + 1) % 12]?.let { return "b$it" }
+        }
+        if (s == 1 || s == 6) {
+            MAJOR_DEGREE[(s - 1 + 12) % 12]?.let { return "#$it" }
+        }
+        MAJOR_DEGREE[(s + 1) % 12]?.let { return "b$it" }
+        MAJOR_DEGREE[(s - 1 + 12) % 12]?.let { return "#$it" }
+        return "?"
+    }
+
+    fun toJianpu(midi: Int, tonic: Int): String {
+        val semitone = ((midi - tonic) % 12 + 12) % 12
+        val degree = jianpuDegree(semitone)
+        val baseTonic = 60 + (((tonic - 60) % 12) + 12) % 12
+        val diff = midi - baseTonic
+        val octave = if (diff >= 0) diff / 12 else -((-diff + 11) / 12)
+        val marks = when {
+            octave > 0 -> "'".repeat(octave)
+            octave < 0 -> ",".repeat(-octave)
+            else -> ""
+        }
+        return degree + marks
+    }
+
     fun noteName(pitchClass: Int): String = NOTE_NAMES[((pitchClass % 12) + 12) % 12]
 
     fun keyName(keyIndex: Int, minor: Boolean): String =
