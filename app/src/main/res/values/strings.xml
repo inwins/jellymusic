@@ -258,6 +258,7 @@
     <string name="cached">Cached</string>
     <string name="online">Online</string>
     <string name="cached_tap_to_download">Cached, tap to download</string>
+    <string name="sync_to_server">Saved to the Jellyfin server</string>
     <string name="edit_info">Edit info</string>
     <string name="title_label">Title</string>
     <string name="artist_label">Artist</string>

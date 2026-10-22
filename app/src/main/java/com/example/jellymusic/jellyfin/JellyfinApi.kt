@@ -576,6 +576,43 @@ class JellyfinApi(
         }
     }
 
+    suspend fun updateItemMetadata(
+        itemId: String,
+        name: String,
+        artists: List<String>,
+        album: String?,
+    ) = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("Name", name)
+            .put("Artists", JSONArray(artists))
+            .put("AlbumArtists", JSONArray(artists))
+        if (!album.isNullOrBlank()) payload.put("Album", album)
+        val request = Request.Builder()
+            .url("$baseUrl/Items/$itemId")
+            .auth()
+            .post(payload.toString().toRequestBody(jsonMediaType))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException(describeError(response.code, response.body?.string().orEmpty()))
+            }
+        }
+    }
+
+    suspend fun uploadItemImage(itemId: String, bytes: ByteArray) =
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url("$baseUrl/Items/$itemId/Images/Primary")
+                .auth()
+                .post(bytes.toRequestBody("image/jpeg".toMediaType()))
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException(describeError(response.code, response.body?.string().orEmpty()))
+                }
+            }
+        }
+
     suspend fun setFavorite(itemId: String, favorite: Boolean) = withContext(Dispatchers.IO) {
         val request = if (favorite) {
             Request.Builder()

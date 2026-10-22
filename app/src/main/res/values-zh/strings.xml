@@ -258,6 +258,7 @@
     <string name="cached">已缓存</string>
     <string name="online">线上</string>
     <string name="cached_tap_to_download">已缓存，点击下载</string>
+    <string name="sync_to_server">将同步保存到 Jellyfin 服务器</string>
     <string name="edit_info">编辑信息</string>
     <string name="title_label">标题</string>
     <string name="artist_label">艺术家</string>

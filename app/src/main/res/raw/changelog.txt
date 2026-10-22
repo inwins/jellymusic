@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.13.1
+- Edit song metadata (title/artist/album) and cover art; for server songs the changes are written back to the Jellyfin server
+
 2.13.0
 - Feature library: browse analyzed songs and filter by BPM range or key
 - Background analysis of downloaded & local songs (WorkManager)

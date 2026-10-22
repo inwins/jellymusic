@@ -30,6 +30,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,13 +53,31 @@ fun GlobalDialogs(state: AppState) {
 @Composable
 private fun LocalEditDialog(state: AppState) {
     val item = state.localEditItem ?: return
+    val isLocal = item.localUri != null
     var title by remember(item.id) { mutableStateOf(item.name) }
     var artist by remember(item.id) { mutableStateOf(item.trackArtist.orEmpty()) }
     var album by remember(item.id) { mutableStateOf(item.album.orEmpty()) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val coverLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
-        if (uri != null) state.localMusic.setCover(item.id, uri)
+        if (uri == null) return@rememberLauncherForActivityResult
+        if (isLocal) {
+            state.localMusic.setCover(item.id, uri)
+        } else {
+            scope.launch {
+                val ok = runCatching {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes != null) state.api?.uploadItemImage(item.id, bytes)
+                }.isSuccess
+                Toast.makeText(
+                    context,
+                    context.getString(if (ok) R.string.sync_done else R.string.sync_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
     }
     AlertDialog(
         onDismissRequest = { state.localEditItem = null },
@@ -88,11 +108,40 @@ private fun LocalEditDialog(state: AppState) {
                 TextButton(onClick = { coverLauncher.launch(arrayOf("image/*")) }) {
                     Text(stringResource(R.string.change_cover))
                 }
+                if (!isLocal) {
+                    Text(
+                        stringResource(R.string.sync_to_server),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                state.localMusic.setOverride(item.id, title, artist, album)
+                if (isLocal) {
+                    state.localMusic.setOverride(item.id, title, artist, album)
+                } else {
+                    scope.launch {
+                        val ok = runCatching {
+                            state.api?.updateItemMetadata(
+                                itemId = item.id,
+                                name = title.ifBlank { item.name },
+                                artists = if (artist.isBlank()) {
+                                    item.artists
+                                } else {
+                                    listOf(artist)
+                                },
+                                album = album.ifBlank { null },
+                            )
+                        }.isSuccess
+                        Toast.makeText(
+                            context,
+                            context.getString(if (ok) R.string.sync_done else R.string.sync_failed),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
                 state.localEditItem = null
             }) {
                 Text(stringResource(R.string.save))
@@ -165,14 +214,12 @@ private fun TrackActionsDialog(state: AppState) {
                     state.player.addToQueue(item)
                     state.trackMenu = null
                 }
-                if (isLocal) {
-                    ActionRow(
-                        icon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        text = stringResource(R.string.edit_info),
-                    ) {
-                        state.localEditItem = item
-                        state.trackMenu = null
-                    }
+                ActionRow(
+                    icon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    text = stringResource(R.string.edit_info),
+                ) {
+                    state.localEditItem = item
+                    state.trackMenu = null
                 }
                 ActionRow(
                     icon = { Icon(Icons.Default.GraphicEq, contentDescription = null) },
