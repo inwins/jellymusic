@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.17.3
+- Melody/scale preview now uses a piano-like additive synth instead of a raw sine
+
 2.17.2
 - Analysis lists skip songs whose local file is missing
 - Show melody confidence alongside the transcription
