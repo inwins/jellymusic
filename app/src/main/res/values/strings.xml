@@ -23,6 +23,9 @@
     <string name="show_password">Show password</string>
     <string name="hide_password">Hide password</string>
     <string name="login">Log in</string>
+    <string name="server_version">Server version</string>
+    <string name="client_version">Client version</string>
+    <string name="about">About</string>
     <string name="servers">Servers</string>
     <string name="add_server">Add server</string>
     <string name="active_server">Active</string>

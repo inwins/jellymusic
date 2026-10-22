@@ -65,6 +65,9 @@ class AppState(private val context: Context) {
     val isOnline = mutableStateOf(true)
     val userName = mutableStateOf(session.userName)
     val sessionExpired = mutableStateOf(false)
+    val serverName = mutableStateOf<String?>(null)
+    val serverVersion = mutableStateOf<String?>(null)
+    val serverOs = mutableStateOf<String?>(null)
     val refreshSignal = mutableStateOf(0)
 
     val backStack = mutableStateListOf<Screen>(Screen.Home)
@@ -198,6 +201,7 @@ class AppState(private val context: Context) {
         downloads.resumePending(a)
         AutoDownloadScheduler.schedule(context)
         player.restoreState()
+        refreshServerInfo()
         scope.launch { syncOfflineChanges() }
     }
 
@@ -222,6 +226,7 @@ class AppState(private val context: Context) {
             bindPlaybackService()
             backStack.clear()
             backStack.add(Screen.Home)
+            refreshServerInfo()
             scope.launch { syncOfflineChanges() }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -264,6 +269,7 @@ class AppState(private val context: Context) {
         bindPlaybackService()
         backStack.clear()
         backStack.add(Screen.Home)
+        refreshServerInfo()
         scope.launch { syncOfflineChanges() }
         quickApi = null
     }
@@ -285,6 +291,7 @@ class AppState(private val context: Context) {
         isLoggedIn.value = true
         backStack.clear()
         backStack.add(Screen.Home)
+        refreshServerInfo()
         scope.launch { syncOfflineChanges() }
     }
 
@@ -343,6 +350,17 @@ class AppState(private val context: Context) {
             syncing.value = false
         }
         return ok
+    }
+
+    private fun refreshServerInfo() {
+        val client = api ?: return
+        scope.launch {
+            runCatching { client.getServerInfo() }.onSuccess { info ->
+                serverName.value = info.name
+                serverVersion.value = info.version
+                serverOs.value = info.os
+            }
+        }
     }
 
     private fun setupApi(apiClient: JellyfinApi) {

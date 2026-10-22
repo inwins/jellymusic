@@ -25,6 +25,12 @@ data class AuthResult(
     val displayName: String,
 )
 
+data class ServerInfo(
+    val name: String,
+    val version: String,
+    val os: String,
+)
+
 data class QuickConnectState(
     val secret: String,
     val code: String,
@@ -98,6 +104,25 @@ class JellyfinApi(
         403 -> context.getString(R.string.error_forbidden)
         404 -> context.getString(R.string.error_not_found)
         else -> context.getString(R.string.error_http, code, body)
+    }
+
+    suspend fun getServerInfo(): ServerInfo = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("$baseUrl/System/Info")
+            .auth()
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IOException(describeError(response.code, body))
+            val json = JSONObject(body)
+            ServerInfo(
+                name = json.optString("ServerName"),
+                version = json.optString("Version"),
+                os = json.optString("OperatingSystemDisplayName")
+                    .ifBlank { json.optString("OperatingSystem") },
+            )
+        }
     }
 
     suspend fun quickConnectInitiate(): QuickConnectState = withContext(Dispatchers.IO) {

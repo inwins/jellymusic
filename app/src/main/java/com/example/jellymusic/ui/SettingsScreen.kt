@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import com.example.jellymusic.AppState
+import com.example.jellymusic.BuildConfig
 import com.example.jellymusic.R
 import com.example.jellymusic.data.AudioAnalysisScheduler
 import com.example.jellymusic.data.AutoDownloadScheduler
@@ -786,6 +787,30 @@ fun SettingsScreen(state: AppState) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
             }
             item { SettingsSectionTitle(stringResource(R.string.servers)) }
+            item {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    val name = state.serverName.value.orEmpty()
+                    val version = state.serverVersion.value.orEmpty()
+                    Text(
+                        stringResource(R.string.server_version) + ": " +
+                            listOf(name, version).filter { it.isNotBlank() }.joinToString(" "),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    state.serverOs.value?.takeIf { it.isNotBlank() }?.let { os ->
+                        Text(
+                            os,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        stringResource(R.string.client_version) + ": " + BuildConfig.VERSION_NAME,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             state.savedServers().forEachIndexed { index, server ->
                 item {
                     Row(
