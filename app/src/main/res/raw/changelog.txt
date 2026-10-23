@@ -1,5 +1,11 @@
 Jellyfin Music — Changelog
 
+2.20.0
+- Daily mix: a daily-stable selection from your analysed library (favourites boosted)
+- Heart mode: shuffle the daily mix
+- "Not interested" feedback excludes a song from recommendations
+- Sound presets (off / bass / vocal / surround)
+
 2.19.0
 - Running radio: build a queue matched to a target BPM/cadence
 - Highlight: jump to the most energetic 30 seconds of a song

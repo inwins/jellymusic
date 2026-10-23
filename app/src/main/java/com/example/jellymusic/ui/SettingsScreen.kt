@@ -353,6 +353,42 @@ fun SettingsScreen(state: AppState) {
                 SettingsSectionTitle(stringResource(R.string.audio_effects))
             }
             item {
+                Text(
+                    stringResource(R.string.sound_preset),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = {
+                        state.player.equalizer.setBassBoost(false)
+                        state.player.equalizer.setVirtualizer(false)
+                        state.player.equalizer.setLoudnessBoost(false)
+                    }) { Text(stringResource(R.string.preset_off)) }
+                    TextButton(onClick = {
+                        state.player.equalizer.setBassBoost(true)
+                        state.player.equalizer.setBassStrength(800)
+                        state.player.equalizer.setVirtualizer(false)
+                    }) { Text(stringResource(R.string.preset_bass)) }
+                    TextButton(onClick = {
+                        state.player.equalizer.setBassBoost(false)
+                        state.player.equalizer.setVirtualizer(false)
+                        state.player.equalizer.setLoudnessBoost(true)
+                        state.player.equalizer.setLoudnessGain(400)
+                    }) { Text(stringResource(R.string.preset_vocal)) }
+                    TextButton(onClick = {
+                        state.player.equalizer.setVirtualizer(true)
+                        state.player.equalizer.setVirtualizerStrength(700)
+                    }) { Text(stringResource(R.string.preset_surround)) }
+                }
+            }
+            item {
                 SettingSwitchRow(
                     title = stringResource(R.string.bass_boost),
                     checked = state.settings.bassBoostEnabled,

@@ -119,6 +119,27 @@ class AudioFeaturesStore(context: Context) {
         return ordered
     }
 
+    fun dailyMix(
+        seedDate: Int,
+        favoriteIds: Set<String>,
+        dislikedIds: Set<String>,
+        limit: Int = 30,
+    ): List<BaseItem> {
+        val pool = all().filter { (item, _) ->
+            item.id !in dislikedIds && item.localUri != null || true
+        }.filter { (item, _) -> item.id !in dislikedIds }
+        if (pool.isEmpty()) return emptyList()
+        val scored = pool
+            .sortedByDescending { (item, features) ->
+                (if (item.id in favoriteIds) 1.5f else 0f) +
+                    features.energy +
+                    features.melodyConfidence * 0.5f
+            }
+            .map { it.first }
+        val start = ((seedDate % scored.size) + scored.size) % scored.size
+        return (scored.drop(start) + scored.take(start)).take(limit)
+    }
+
     fun runningRadio(targetBpm: Int, tolerance: Int = 18, limit: Int = 60): List<BaseItem> {
         return features.entries
             .asSequence()

@@ -172,6 +172,9 @@ fun HomeTab(state: AppState) {
                     ) {
                         SectionTitle(stringResource(R.string.recently_added))
                         Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { state.navigate(Screen.Daily) }) {
+                            Text(stringResource(R.string.daily_mix))
+                        }
                         TextButton(onClick = { state.navigate(Screen.AllSongs) }) {
                             Text(stringResource(R.string.all_songs))
                         }

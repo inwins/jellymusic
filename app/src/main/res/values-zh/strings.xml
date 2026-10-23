@@ -298,6 +298,14 @@
     <string name="top_albums">最常听专辑</string>
     <string name="library_songs">曲库歌曲</string>
     <string name="total_plays">总播放次数</string>
+    <string name="daily_mix">每日推荐</string>
+    <string name="not_interested">不感兴趣</string>
+    <string name="heart_mode">心动模式</string>
+    <string name="sound_preset">音效预设</string>
+    <string name="preset_off">关闭</string>
+    <string name="preset_bass">重低音</string>
+    <string name="preset_vocal">人声</string>
+    <string name="preset_surround">环绕</string>
     <string name="running_radio">跑步电台</string>
     <string name="target_bpm">目标步频</string>
     <string name="highlight">精彩片段</string>

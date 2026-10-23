@@ -21,6 +21,7 @@ import com.example.jellymusic.data.AudioFeaturesStore
 import com.example.jellymusic.data.RatingStore
 import com.example.jellymusic.data.AuthHeaders
 import com.example.jellymusic.data.AutoDownloadScheduler
+import com.example.jellymusic.data.DislikeStore
 import com.example.jellymusic.data.DiskCache
 import com.example.jellymusic.data.DownloadStore
 import com.example.jellymusic.data.FavoriteStore
@@ -55,6 +56,7 @@ class AppState(private val context: Context) {
     val downloads = DownloadStore(context, settings)
     val favorites = FavoriteStore(context)
     val ratings = RatingStore(context)
+    val dislikes = DislikeStore(context)
     val playbackReports = PlaybackReportStore(context)
     val localMusic = LocalMusicStore(context)
     val localPlaylists = LocalPlaylistStore(context)

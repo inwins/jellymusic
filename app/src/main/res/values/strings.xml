@@ -298,6 +298,14 @@
     <string name="top_albums">Top albums</string>
     <string name="library_songs">Library songs</string>
     <string name="total_plays">Total plays</string>
+    <string name="daily_mix">Daily mix</string>
+    <string name="not_interested">Not interested</string>
+    <string name="heart_mode">Heart mode</string>
+    <string name="sound_preset">Sound preset</string>
+    <string name="preset_off">Off</string>
+    <string name="preset_bass">Bass</string>
+    <string name="preset_vocal">Vocal</string>
+    <string name="preset_surround">Surround</string>
     <string name="running_radio">Running radio</string>
     <string name="target_bpm">Target BPM</string>
     <string name="highlight">Highlight</string>
