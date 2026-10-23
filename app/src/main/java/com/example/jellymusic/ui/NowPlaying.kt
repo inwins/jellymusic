@@ -132,6 +132,7 @@ import com.example.jellymusic.R
 import com.example.jellymusic.data.AudioFeatures
 import com.example.jellymusic.jellyfin.LyricLine
 import com.example.jellymusic.player.MusicPlayer
+import com.example.jellymusic.player.Metronome
 import com.example.jellymusic.player.PlayMode
 import kotlin.math.roundToInt
 import kotlinx.coroutines.withContext
@@ -226,6 +227,11 @@ fun NowPlayingScreen(state: AppState) {
     var dragPosition by remember { mutableStateOf<Float?>(null) }
     var showQueue by remember { mutableStateOf(false) }
     var queueQuery by remember { mutableStateOf("") }
+    var metronomeOn by remember { mutableStateOf(false) }
+    val metronome = remember { Metronome() }
+    DisposableEffect(Unit) {
+        onDispose { metronome.stop() }
+    }
     var moreMenuOpen by remember { mutableStateOf(false) }
     var showSleepDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -475,6 +481,17 @@ fun NowPlayingScreen(state: AppState) {
                                 },
                             )
                             DropdownMenuItem(
+                                text = { Text(stringResource(R.string.skip_intro)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    val intro = state.audioFeatures.get(current.id)?.introEndMs
+                                    if (intro != null && intro > 0L) {
+                                        player.seekTo(intro)
+                                        if (!player.isPlaying) player.toggle()
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
                                 text = { Text(stringResource(R.string.lyrics_poster)) },
                                 onClick = {
                                     moreMenuOpen = false
@@ -489,6 +506,26 @@ fun NowPlayingScreen(state: AppState) {
                                             accent = accent.toArgb(),
                                         )
                                         if (file != null) LyricsPoster.share(context, file)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.metronome)) },
+                                trailingIcon = {
+                                    if (metronomeOn) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    metronomeOn = !metronomeOn
+                                    if (metronomeOn) {
+                                        val bpm = state.audioFeatures.get(current.id)?.bpm
+                                            ?.roundToInt()
+                                            ?.takeIf { it > 0 } ?: 120
+                                        metronome.start(bpm)
+                                    } else {
+                                        metronome.stop()
                                     }
                                 },
                             )
@@ -717,7 +754,10 @@ fun NowPlayingScreen(state: AppState) {
                                 ?.name
                             if (currentChord != null) {
                                 Text(
-                                    currentChord,
+                                    MusicTheory.transposeChord(
+                                        currentChord,
+                                        state.settings.pitchSemitones,
+                                    ),
                                     style = MaterialTheme.typography.titleLarge,
                                     color = accent,
                                     modifier = Modifier.padding(start = 16.dp),
@@ -776,6 +816,31 @@ fun NowPlayingScreen(state: AppState) {
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
                 ) {
+                    val bpm = state.audioFeatures.get(current.id)?.bpm
+                        ?.takeIf { it > 0f } ?: 120f
+                    val beatMs = 60_000f / bpm
+                    val beatIndex = ((player.positionMs / beatMs).toInt()) % 4
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        repeat(4) { index ->
+                            Box(
+                                Modifier
+                                    .padding(horizontal = 3.dp)
+                                    .size(if (index == beatIndex) 7.dp else 5.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (index == beatIndex) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        },
+                                    ),
+                            )
+                        }
+                    }
                     Slider(
                         value = sliderPosition.coerceIn(0f, duration.toFloat()),
                         onValueChange = { dragPosition = it },

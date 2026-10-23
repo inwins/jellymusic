@@ -178,6 +178,26 @@ object AudioDsp {
             pitchHistogram = pitchHistogram,
             chords = buildChords(frameChroma, bpm, sampleRate),
             timeSignature = estimateTimeSignature(flux, bpm, sampleRate),
+            introEndMs = run {
+                if (frameRms.isEmpty()) {
+                    0L
+                } else {
+                    val frameMs = HOP * 1000L / sampleRate
+                    val mean = frameRms.average().toFloat()
+                    val threshold = mean * 0.9f
+                    val window = (2_000L / frameMs).toInt().coerceAtLeast(1)
+                    var found = 0
+                    for (i in 0 until frameRms.size - window) {
+                        var sum = 0f
+                        for (j in i until i + window) sum += frameRms[j]
+                        if (sum / window > threshold) {
+                            found = i
+                            break
+                        }
+                    }
+                    found * frameMs
+                }
+            },
             highlightStartMs = run {
                 if (frameRms.isEmpty()) {
                     0L

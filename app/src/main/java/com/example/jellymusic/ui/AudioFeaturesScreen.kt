@@ -198,6 +198,31 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                                 stringResource(R.string.note_count),
                                 features.notes.size.toString(),
                             )
+                            val suggested = MusicTheory.suggestTranspose(
+                                features.pitchMin,
+                                features.pitchMax,
+                            )
+                            if (suggested != 0) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        stringResource(R.string.suggest_transpose) + ": " +
+                                            (if (suggested > 0) "+$suggested" else "$suggested") +
+                                            " st",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    TextButton(onClick = {
+                                        state.player.changePitchSemitones(suggested)
+                                    }) {
+                                        Text(stringResource(R.string.apply))
+                                    }
+                                }
+                            }
                             FeatureRow(
                                 stringResource(R.string.melody_confidence),
                                 "${(features.melodyConfidence * 100).roundToInt()}%",

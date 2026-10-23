@@ -103,6 +103,32 @@ object MusicTheory {
         return if (bestRoot >= 0) bestRoot to bestMinor else null
     }
 
+    fun transposeChord(name: String, semitones: Int): String {
+        if (semitones == 0 || name.isBlank()) return name
+        val rootLength = when {
+            name.length >= 2 && name[1] == '#' -> 2
+            else -> 1
+        }
+        val rootName = name.take(rootLength)
+        val suffix = name.drop(rootLength)
+        val index = NOTE_NAMES.indexOf(rootName)
+        if (index < 0) return name
+        val pc = ((index + semitones) % 12 + 12) % 12
+        return NOTE_NAMES[pc] + suffix
+    }
+
+    /** Suggests a semitone shift so a melody range sits in a comfortable vocal range. */
+    fun suggestTranspose(pitchMin: Int, pitchMax: Int): Int {
+        if (pitchMin <= 0 || pitchMax <= 0 || pitchMax < pitchMin) return 0
+        val targetCenter = 65 // F4
+        val center = (pitchMin + pitchMax) / 2
+        var shift = targetCenter - center
+        // keep the result inside a broad singable range
+        if (pitchMin + shift < 48) shift = 48 - pitchMin
+        if (pitchMax + shift > 84) shift = 84 - pitchMax
+        return shift.coerceIn(-12, 12)
+    }
+
     fun chordName(root: Int, minor: Boolean): String =
         noteName(root) + if (minor) "m" else ""
 

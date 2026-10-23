@@ -1,5 +1,13 @@
 Jellyfin Music — Changelog
 
+2.22.0
+- Ear training: interval and chord recognition quizzes
+- Tuner: microphone pitch detection with note and cents
+- Metronome synced to the song BPM, with a 4-beat indicator on the player
+- Suggested transpose to fit a comfortable vocal range (one-tap apply)
+- Skip intro / jump to the chorus (analysis-based)
+- Chords on the lyrics page transpose with the pitch setting
+
 2.21.0
 - Pitch shift (transpose by semitones), independent of playback speed
 - Practice screen: play scales and chord progressions with a piano synth and adjustable tempo
