@@ -15,6 +15,7 @@ sealed class Screen {
     data object ListeningStats : Screen()
     data object RunningRadio : Screen()
     data object Daily : Screen()
+    data object Practice : Screen()
     data class AudioFeatures(val item: com.example.jellymusic.jellyfin.BaseItem) : Screen()
     data object Genres : Screen()
     data object Folders : Screen()

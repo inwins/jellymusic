@@ -26,12 +26,18 @@ class TonePlayer {
     private var job: Job? = null
     private var track: AudioTrack? = null
 
-    fun play(notes: List<Int>, noteMs: Int = 320) {
+    fun play(notes: List<Int>, noteMs: Int = 320) =
+        playEvents(notes.map { listOf(it) }, noteMs)
+
+    fun playChords(chords: List<List<Int>>, noteMs: Int = 700) =
+        playEvents(chords, noteMs)
+
+    private fun playEvents(events: List<List<Int>>, noteMs: Int) {
         stop()
-        if (notes.isEmpty()) return
+        if (events.isEmpty()) return
         job = scope.launch {
             val sampleRate = 22_050
-            val buffer = render(notes, sampleRate, noteMs)
+            val buffer = render(events, sampleRate, noteMs)
             if (buffer.isEmpty()) return@launch
             val minBuffer = AudioTrack.getMinBufferSize(
                 sampleRate,
@@ -79,20 +85,22 @@ class TonePlayer {
         track = null
     }
 
-    private fun render(notes: List<Int>, sampleRate: Int, noteMs: Int): ShortArray {
+    private fun render(events: List<List<Int>>, sampleRate: Int, noteMs: Int): ShortArray {
         val tailMs = 1_400
-        val totalSamples = sampleRate * (notes.size * noteMs + tailMs) / 1000
+        val totalSamples = sampleRate * (events.size * noteMs + tailMs) / 1000
         if (totalSamples <= 0) return ShortArray(0)
         val mix = FloatArray(totalSamples)
         val random = Random(7L)
-        notes.forEachIndexed { index, midi ->
-            val frequency = 440.0 * 2.0.pow((midi - 69) / 12.0)
-            val note = pianoNote(frequency, sampleRate, tailMs + noteMs, random)
+        events.forEachIndexed { index, midis ->
             val offset = index * sampleRate * noteMs / 1000
-            for (j in note.indices) {
-                val target = offset + j
-                if (target >= totalSamples) break
-                mix[target] += note[j]
+            midis.forEach { midi ->
+                val frequency = 440.0 * 2.0.pow((midi - 69) / 12.0)
+                val note = pianoNote(frequency, sampleRate, tailMs + noteMs, random)
+                for (j in note.indices) {
+                    val target = offset + j
+                    if (target >= totalSamples) break
+                    mix[target] += note[j] / midis.size
+                }
             }
         }
         var peak = 0f

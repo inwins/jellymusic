@@ -243,6 +243,13 @@
     <string name="sleep_minutes">%1$d minutes</string>
     <string name="sleep_remaining">Sleep timer %1$s</string>
     <string name="sleep_end_of_track_active">Pause after the current track</string>
+    <string name="pitch">Pitch</string>
+    <string name="practice">Practice</string>
+    <string name="scale_practice">Scale practice</string>
+    <string name="chord_practice">Chord practice</string>
+    <string name="root_note">Root</string>
+    <string name="progression">Progression</string>
+    <string name="tempo">Tempo</string>
     <string name="speed">Playback speed</string>
     <string name="speed_value">%1$sx</string>
     <string name="more">More</string>

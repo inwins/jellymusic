@@ -214,6 +214,10 @@ class AppSettings(context: Context) {
         get() = prefs.getString(KEY_BACKGROUND, null)
         set(value) = prefs.edit().putString(KEY_BACKGROUND, value).apply()
 
+    var pitchSemitones: Int
+        get() = prefs.getInt(KEY_PITCH, 0)
+        set(value) = prefs.edit().putInt(KEY_PITCH, value).apply()
+
     var allSongsSort: String
         get() = prefs.getString(KEY_ALL_SORT, "NAME") ?: "NAME"
         set(value) = prefs.edit().putString(KEY_ALL_SORT, value).apply()
@@ -365,6 +369,7 @@ class AppSettings(context: Context) {
         const val KEY_ALBUM_FAV = "album_fav_only"
         const val KEY_ARTIST_SORT = "artist_sort"
         const val KEY_ALL_SORT = "all_songs_sort"
+        const val KEY_PITCH = "pitch_semitones"
         const val KEY_COVER_SHAPE = "cover_shape"
         const val KEY_BACKGROUND = "custom_background"
         const val KEY_ALL_DESC = "all_songs_desc"

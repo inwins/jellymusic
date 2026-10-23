@@ -31,6 +31,7 @@ import com.example.jellymusic.data.baseItemFromJson
 import com.example.jellymusic.data.toJson
 import com.example.jellymusic.jellyfin.BaseItem
 import com.example.jellymusic.jellyfin.JellyfinApi
+import kotlin.math.pow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -175,7 +176,7 @@ class MusicPlayer(
 
     init {
         exo.setSkipSilenceEnabled(settings.skipSilence)
-        exo.setPlaybackParameters(PlaybackParameters(playbackSpeed))
+        applyPlaybackParameters()
         loadResumePositions()
 
         exo.addListener(object : Player.Listener {
@@ -456,10 +457,20 @@ class MusicPlayer(
         repeatB = null
     }
 
+    private fun applyPlaybackParameters() {
+        val pitch = 2.0.pow(settings.pitchSemitones / 12.0).toFloat()
+        exo.setPlaybackParameters(PlaybackParameters(playbackSpeed, pitch))
+    }
+
+    fun changePitchSemitones(semitones: Int) {
+        settings.pitchSemitones = semitones.coerceIn(-12, 12)
+        applyPlaybackParameters()
+    }
+
     fun changePlaybackSpeed(speed: Float) {
         playbackSpeed = speed
         settings.playbackSpeed = speed
-        exo.setPlaybackParameters(PlaybackParameters(speed))
+        applyPlaybackParameters()
         saveState()
     }
 

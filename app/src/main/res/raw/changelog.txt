@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.21.0
+- Pitch shift (transpose by semitones), independent of playback speed
+- Practice screen: play scales and chord progressions with a piano synth and adjustable tempo
+- Current chord shown on the lyrics page (from chord recognition)
+
 2.20.0
 - Daily mix: a daily-stable selection from your analysed library (favourites boosted)
 - Heart mode: shuffle the daily mix

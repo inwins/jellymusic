@@ -243,6 +243,13 @@
     <string name="sleep_minutes">%1$d 分钟</string>
     <string name="sleep_remaining">睡眠定时 %1$s</string>
     <string name="sleep_end_of_track_active">播完当前曲目后暂停</string>
+    <string name="pitch">变调</string>
+    <string name="practice">练习</string>
+    <string name="scale_practice">音阶练习</string>
+    <string name="chord_practice">和弦进行</string>
+    <string name="root_note">主音</string>
+    <string name="progression">进行</string>
+    <string name="tempo">速度</string>
     <string name="speed">播放速度</string>
     <string name="speed_value">%1$sx</string>
     <string name="more">更多</string>

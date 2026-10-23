@@ -711,7 +711,19 @@ fun NowPlayingScreen(state: AppState) {
                             accent = accent,
                         )
 
-                        else -> LyricsView(
+                        else -> Column(Modifier.fillMaxSize()) {
+                            val currentChord = state.audioFeatures.get(current.id)?.chords
+                                ?.lastOrNull { it.startMs <= player.positionMs }
+                                ?.name
+                            if (currentChord != null) {
+                                Text(
+                                    currentChord,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = accent,
+                                    modifier = Modifier.padding(start = 16.dp),
+                                )
+                            }
+                            LyricsView(
                             lyrics = lyrics,
                             positionMs = player.positionMs,
                             offsetMs = lyricsOffset,
@@ -722,7 +734,8 @@ fun NowPlayingScreen(state: AppState) {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 12.dp),
-                        )
+                            )
+                        }
                     }
                 }
 
@@ -1014,7 +1027,6 @@ fun NowPlayingScreen(state: AppState) {
                     listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { value ->
                         TextButton(onClick = {
                             player.changePlaybackSpeed(value)
-                            showSpeedDialog = false
                         }) {
                             Text(
                                 stringResource(R.string.speed_value, formatSpeed(value)),
@@ -1024,6 +1036,24 @@ fun NowPlayingScreen(state: AppState) {
                                     MaterialTheme.colorScheme.onSurface
                                 },
                             )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.pitch) + ": " +
+                            if (state.settings.pitchSemitones > 0) {
+                                "+${state.settings.pitchSemitones}"
+                            } else {
+                                state.settings.pitchSemitones.toString()
+                            } + " st",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.Center) {
+                        listOf(-5, -2, -1, 0, 1, 2, 5).forEach { semitones ->
+                            TextButton(onClick = { player.changePitchSemitones(semitones) }) {
+                                Text(if (semitones > 0) "+$semitones" else "$semitones")
+                            }
                         }
                     }
                 }
