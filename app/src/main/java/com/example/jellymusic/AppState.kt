@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.example.jellymusic.data.AppSettings
 import com.example.jellymusic.data.AudioFeaturesStore
 import com.example.jellymusic.data.RatingStore
+import com.example.jellymusic.data.TheoryStore
 import com.example.jellymusic.data.AuthHeaders
 import com.example.jellymusic.data.AutoDownloadScheduler
 import com.example.jellymusic.data.DislikeStore
@@ -57,6 +58,7 @@ class AppState(private val context: Context) {
     val favorites = FavoriteStore(context)
     val ratings = RatingStore(context)
     val dislikes = DislikeStore(context)
+    val theory = TheoryStore(context)
     val playbackReports = PlaybackReportStore(context)
     val localMusic = LocalMusicStore(context)
     val localPlaylists = LocalPlaylistStore(context)
