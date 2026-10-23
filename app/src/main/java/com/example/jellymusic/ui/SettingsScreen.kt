@@ -786,6 +786,70 @@ fun SettingsScreen(state: AppState) {
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
             }
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                SettingsSectionTitle(stringResource(R.string.appearance))
+            }
+            item {
+                Text(
+                    stringResource(R.string.cover_shape),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = state.settings.coverShape == 0,
+                        onClick = { state.settings.coverShape = 0 },
+                        label = { Text(stringResource(R.string.cover_square)) },
+                    )
+                    FilterChip(
+                        selected = state.settings.coverShape == 1,
+                        onClick = { state.settings.coverShape = 1 },
+                        label = { Text(stringResource(R.string.cover_circle)) },
+                    )
+                }
+            }
+            item {
+                val context = LocalContext.current
+                val backgroundLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument(),
+                ) { uri ->
+                    if (uri != null) {
+                        runCatching {
+                            context.contentResolver.takePersistableUriPermission(
+                                uri,
+                                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                            )
+                        }
+                        state.settings.customBackgroundUri = uri.toString()
+                    }
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { backgroundLauncher.launch(arrayOf("image/*")) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.custom_background),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (state.settings.customBackgroundUri != null) {
+                        TextButton(onClick = { state.settings.customBackgroundUri = null }) {
+                            Text(stringResource(R.string.clear_custom))
+                        }
+                    }
+                }
+            }
             item { SettingsSectionTitle(stringResource(R.string.servers)) }
             item {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {

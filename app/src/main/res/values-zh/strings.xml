@@ -191,6 +191,17 @@
     <string name="remove_from_playlist">从歌单移除</string>
     <string name="save">保存</string>
     <string name="view_all">查看全部</string>
+    <string name="clear_custom">清除</string>
+    <string name="cover_shape">封面形状</string>
+    <string name="cover_square">方形</string>
+    <string name="cover_circle">黑胶</string>
+    <string name="custom_background">自定义背景</string>
+    <string name="mark_played">标记为已播放</string>
+    <string name="playlist_export">导出</string>
+    <string name="playlist_import">导入</string>
+    <string name="playlist_dedupe">去重</string>
+    <string name="rating_filter">评分</string>
+    <string name="rating_at_least">≥%1$d★</string>
     <string name="select">多选</string>
     <string name="select_all">全选</string>
     <string name="all_songs">全部歌曲</string>

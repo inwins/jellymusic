@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.GraphicEq
@@ -382,6 +383,15 @@ private fun TrackActionsDialog(state: AppState) {
                 ) {
                     state.localEditItem = item
                     state.trackMenu = null
+                }
+                if (!isLocal) {
+                    ActionRow(
+                        icon = { Icon(Icons.Default.DoneAll, contentDescription = null) },
+                        text = stringResource(R.string.mark_played),
+                    ) {
+                        scope.launch { runCatching { state.api?.markPlayed(item.id) } }
+                        state.trackMenu = null
+                    }
                 }
                 ActionRow(
                     icon = { Icon(Icons.Default.Info, contentDescription = null) },

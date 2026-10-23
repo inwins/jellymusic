@@ -85,6 +85,15 @@ class LocalPlaylistStore(context: Context) {
         save()
     }
 
+    fun dedupe(id: String) {
+        val playlist = get(id) ?: return
+        val distinct = playlist.items.distinctBy { it.id }
+        if (distinct.size == playlist.items.size) return
+        playlist.items.clear()
+        playlist.items.addAll(distinct)
+        save()
+    }
+
     fun pendingCount(): Int = playlists.count { it.pendingSync } + deletions.size
 
     suspend fun sync(api: JellyfinApi): Boolean {

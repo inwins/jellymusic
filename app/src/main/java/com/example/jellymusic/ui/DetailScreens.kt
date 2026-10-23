@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -301,9 +303,47 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
     val playlist = state.localPlaylists.get(screen.id)
     var showRename by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
-    var renameValue by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        val current = state.localPlaylists.get(screen.id) ?: return@rememberLauncherForActivityResult
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
+                    current.items.forEach {
+                        writer.write(it.name + " - " + it.trackArtist.orEmpty() + "\n")
+                    }
+                }
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val lines = runCatching {
+                    context.contentResolver.openInputStream(uri)
+                        ?.bufferedReader()
+                        ?.readLines()
+                        .orEmpty()
+                }.getOrDefault(emptyList())
+                val api = state.api ?: return@launch
+                var added = 0
+                for (line in lines) {
+                    val query = line.substringBefore(" - ").trim()
+                    if (query.isBlank()) continue
+                    val match = runCatching { api.searchSongs(query, 1).firstOrNull() }
+                        .getOrNull() ?: continue
+                    if (state.localPlaylists.addItem(screen.id, match)) added++
+                }
+                Toast.makeText(context, "导入 $added 首", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    var renameValue by remember { mutableStateOf("") }
 
     if (playlist == null) {
         Column(Modifier.fillMaxSize()) {
@@ -349,6 +389,15 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
                 showRename = true
             }) {
                 Text(stringResource(R.string.rename))
+            }
+            TextButton(onClick = { exportLauncher.launch(playlist.name + ".txt") }) {
+                Text(stringResource(R.string.playlist_export))
+            }
+            TextButton(onClick = { importLauncher.launch(arrayOf("text/plain")) }) {
+                Text(stringResource(R.string.playlist_import))
+            }
+            TextButton(onClick = { state.localPlaylists.dedupe(screen.id) }) {
+                Text(stringResource(R.string.playlist_dedupe))
             }
             TextButton(onClick = { showDelete = true }) {
                 Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)

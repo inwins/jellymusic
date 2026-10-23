@@ -79,6 +79,7 @@ fun AllSongsScreen(state: AppState) {
     }
     var descending by remember { mutableStateOf(state.settings.allSongsDescending) }
     var favoritesOnly by remember { mutableStateOf(state.settings.allSongsFavoritesOnly) }
+    var minRating by remember { mutableIntStateOf(0) }
     var sortMenu by remember { mutableStateOf(false) }
     var selecting by remember { mutableStateOf(false) }
     var didScroll by remember { mutableStateOf(false) }
@@ -155,8 +156,15 @@ fun AllSongsScreen(state: AppState) {
         }
     }
 
-    val sections = remember(items.toList(), sort) {
-        val indexed = items.withIndex().toList()
+    val visible = remember(items.toList(), minRating) {
+        if (minRating == 0) {
+            items.toList()
+        } else {
+            items.filter { state.ratings.rating(it.id) >= minRating }
+        }
+    }
+    val sections = remember(visible, sort) {
+        val indexed = visible.withIndex().toList()
         if (sort == AllSongsSort.RECENT) {
             listOf<Pair<Char?, List<IndexedValue<BaseItem>>>>(null to indexed)
         } else {
@@ -267,6 +275,25 @@ fun AllSongsScreen(state: AppState) {
                 onClick = { favoritesOnly = !favoritesOnly },
                 label = { Text(stringResource(R.string.favorite)) },
             )
+            FilterChip(
+                selected = minRating > 0,
+                onClick = {
+                    minRating = when (minRating) {
+                        0 -> 4
+                        4 -> 5
+                        else -> 0
+                    }
+                },
+                label = {
+                    Text(
+                        if (minRating > 0) {
+                            stringResource(R.string.rating_at_least, minRating)
+                        } else {
+                            stringResource(R.string.rating_filter)
+                        },
+                    )
+                },
+            )
             Spacer(Modifier.weight(1f))
             if (loading) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -275,14 +302,14 @@ fun AllSongsScreen(state: AppState) {
 
         Box(Modifier.weight(1f)) {
             when {
-                items.isEmpty() && loading -> Box(
+                visible.isEmpty() && loading -> Box(
                     Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
                 }
 
-                items.isEmpty() && error != null -> Column(
+                visible.isEmpty() && error != null -> Column(
                     Modifier
                         .fillMaxSize()
                         .padding(24.dp),
@@ -298,17 +325,17 @@ fun AllSongsScreen(state: AppState) {
                     }
                 }
 
-                items.isEmpty() -> EmptyHint(stringResource(R.string.search_no_results))
+                visible.isEmpty() -> EmptyHint(stringResource(R.string.search_no_results))
 
                 else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     item {
                         DetailHeader(
                             state = state,
                             title = stringResource(R.string.all_songs),
-                            subtitle = stringResource(R.string.track_count, items.size),
-                            coverItem = items.firstOrNull(),
-                            onPlay = { state.player.play(items.toList(), 0) },
-                            onShuffle = { state.player.playShuffled(items.toList()) },
+                            subtitle = stringResource(R.string.track_count, visible.size),
+                            coverItem = visible.firstOrNull(),
+                            onPlay = { state.player.play(visible, 0) },
+                            onShuffle = { state.player.playShuffled(visible) },
                         )
                     }
                     sections.forEach { (key, entries) ->
@@ -324,7 +351,7 @@ fun AllSongsScreen(state: AppState) {
                                 item = item,
                                 index = entry.index + 1,
                                 artworkUrl = state.artworkUrl(item, 120),
-                                onClick = { state.player.play(items, entry.index) },
+                                onClick = { state.player.play(visible, entry.index) },
                                 showArtwork = true,
                                 isCurrent = state.player.current?.id == id,
                                 favorite = state.favorites.isFavorite(item),
@@ -392,9 +419,9 @@ fun AllSongsScreen(state: AppState) {
 
         if (selecting) {
             SelectionBar(
-                allItems = items.toList(),
+                allItems = visible,
                 selected = selected,
-                onSelectAll = { items.forEach { selected[it.id] = it } },
+                onSelectAll = { visible.forEach { selected[it.id] = it } },
                 onQueue = { selected.values.forEach { state.player.addToQueue(it) } },
                 onPlaylist = { state.addToPlaylistBatch = selected.values.toList() },
                 onDownload = {

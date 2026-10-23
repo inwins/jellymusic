@@ -1,5 +1,13 @@
 Jellyfin Music — Changelog
 
+2.18.0
+- Vinyl option: circular, slowly rotating album art
+- Swipe up on the mini player to open the Now Playing screen
+- Custom background image for Now Playing
+- Playlist export/import (txt) and remove duplicates
+- Rating filter in All songs
+- "Mark as played" in the track menu
+
 2.17.5
 - All songs: pinyin-based A-Z index and letter sections for Chinese titles
 - Sort by name / artist / recently added with direction, favourites-only filter

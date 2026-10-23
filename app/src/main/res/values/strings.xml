@@ -191,6 +191,17 @@
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="save">Save</string>
     <string name="view_all">View all</string>
+    <string name="clear_custom">Clear</string>
+    <string name="cover_shape">Cover shape</string>
+    <string name="cover_square">Square</string>
+    <string name="cover_circle">Vinyl</string>
+    <string name="custom_background">Custom background</string>
+    <string name="mark_played">Mark as played</string>
+    <string name="playlist_export">Export</string>
+    <string name="playlist_import">Import</string>
+    <string name="playlist_dedupe">Remove duplicates</string>
+    <string name="rating_filter">Rating</string>
+    <string name="rating_at_least">≥%1$d★</string>
     <string name="select">Select</string>
     <string name="select_all">Select all</string>
     <string name="all_songs">All songs</string>

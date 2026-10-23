@@ -24,6 +24,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.geometry.Offset
@@ -163,6 +166,20 @@ fun MiniPlayerBar(state: AppState) {
                 Modifier
                     .fillMaxWidth()
                     .clickable { state.navigate(Screen.NowPlaying) }
+                    .pointerInput(Unit) {
+                        var total = 0f
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                total += dragAmount
+                            },
+                            onDragEnd = {
+                                if (total < -60f) state.navigate(Screen.NowPlaying)
+                                total = 0f
+                            },
+                            onDragCancel = { total = 0f },
+                        )
+                    }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -240,6 +257,7 @@ fun NowPlayingScreen(state: AppState) {
         pageCount = { if (state.settings.visualizerEnabled) 3 else 2 },
     )
     val artUrl = state.artworkUrl(current, 800)
+    val backgroundUrl = state.settings.customBackgroundUri ?: artUrl
     val lyricsOffset = state.settings.lyricsOffsetFor(current.id)
     val paletteAccent by produceState<Color?>(initialValue = null, artUrl) {
         val url = artUrl ?: return@produceState
@@ -296,9 +314,9 @@ fun NowPlayingScreen(state: AppState) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        if (artUrl != null) {
+        if (backgroundUrl != null) {
             AsyncImage(
-                model = artUrl,
+                model = backgroundUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -648,6 +666,8 @@ fun NowPlayingScreen(state: AppState) {
                             showBars = state.settings.visualizerEnabled &&
                                 state.settings.visualizerStyle != 1,
                             gesturesEnabled = state.settings.gesturesEnabled,
+                            circle = state.settings.coverShape == 1,
+                            isPlaying = player.isPlaying,
                             onTogglePlay = { player.toggle() },
                             onNext = { player.next() },
                             onPrevious = { player.previous() },
@@ -1028,6 +1048,8 @@ private fun CoverPage(
     showRing: Boolean,
     showBars: Boolean,
     gesturesEnabled: Boolean,
+    circle: Boolean,
+    isPlaying: Boolean,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -1044,6 +1066,17 @@ private fun CoverPage(
             contentAlignment = Alignment.Center,
         ) {
             val side = minOf(maxWidth * 0.82f, maxHeight * 0.9f, 360.dp)
+            val rotation = remember { Animatable(0f) }
+            LaunchedEffect(isPlaying, circle) {
+                if (circle && isPlaying) {
+                    while (true) {
+                        rotation.animateTo(
+                            rotation.value + 360f,
+                            tween(24_000, easing = LinearEasing),
+                        )
+                    }
+                }
+            }
             Box(
                 Modifier.size(side * 1.5f),
                 contentAlignment = Alignment.Center,
@@ -1058,8 +1091,9 @@ private fun CoverPage(
                 Box(
                     Modifier
                         .size(side)
-                        .shadow(18.dp, RoundedCornerShape(20.dp))
-                        .clip(RoundedCornerShape(20.dp))
+                        .graphicsLayer { rotationZ = if (circle) rotation.value else 0f }
+                        .shadow(18.dp, if (circle) CircleShape else RoundedCornerShape(20.dp))
+                        .clip(if (circle) CircleShape else RoundedCornerShape(20.dp))
                         .pointerInput(gesturesEnabled) {
                             if (!gesturesEnabled) return@pointerInput
                             detectTapGestures(
@@ -1087,7 +1121,7 @@ private fun CoverPage(
                             )
                         },
                 ) {
-                    Artwork(artUrl, side, 20.dp)
+                    Artwork(artUrl, side, if (circle) side / 2 else 20.dp)
                 }
             }
         }

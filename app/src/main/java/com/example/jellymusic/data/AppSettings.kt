@@ -206,6 +206,14 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_ALBUM_FAV, false)
         set(value) = prefs.edit().putBoolean(KEY_ALBUM_FAV, value).apply()
 
+    var coverShape: Int
+        get() = prefs.getInt(KEY_COVER_SHAPE, 0)
+        set(value) = prefs.edit().putInt(KEY_COVER_SHAPE, value).apply()
+
+    var customBackgroundUri: String?
+        get() = prefs.getString(KEY_BACKGROUND, null)
+        set(value) = prefs.edit().putString(KEY_BACKGROUND, value).apply()
+
     var allSongsSort: String
         get() = prefs.getString(KEY_ALL_SORT, "NAME") ?: "NAME"
         set(value) = prefs.edit().putString(KEY_ALL_SORT, value).apply()
@@ -357,6 +365,8 @@ class AppSettings(context: Context) {
         const val KEY_ALBUM_FAV = "album_fav_only"
         const val KEY_ARTIST_SORT = "artist_sort"
         const val KEY_ALL_SORT = "all_songs_sort"
+        const val KEY_COVER_SHAPE = "cover_shape"
+        const val KEY_BACKGROUND = "custom_background"
         const val KEY_ALL_DESC = "all_songs_desc"
         const val KEY_ALL_FAV = "all_songs_fav_only"
         const val KEY_ARTIST_DESC = "artist_desc"
