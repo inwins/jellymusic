@@ -298,6 +298,10 @@
     <string name="top_albums">Top albums</string>
     <string name="library_songs">Library songs</string>
     <string name="total_plays">Total plays</string>
+    <string name="running_radio">Running radio</string>
+    <string name="target_bpm">Target BPM</string>
+    <string name="highlight">Highlight</string>
+    <string name="lyrics_poster">Lyrics poster</string>
     <string name="smart_playlists">Smart playlists</string>
     <string name="recent_played">Recently played</string>
     <string name="most_played">Most played</string>

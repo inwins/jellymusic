@@ -32,6 +32,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.core.content.ContextCompat
+import com.example.jellymusic.util.LyricsPoster
 import com.example.jellymusic.util.MusicTheory
 import kotlin.math.PI
 import kotlin.math.cos
@@ -114,6 +115,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -470,6 +472,35 @@ fun NowPlayingScreen(state: AppState) {
                                     moreMenuOpen = false
                                     state.settings.visualizerStyle =
                                         (state.settings.visualizerStyle + 1) % 3
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.lyrics_poster)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    scope.launch {
+                                        val line = currentLyricLine(lyrics, player.positionMs)
+                                        val file = LyricsPoster.generate(
+                                            context = context,
+                                            coverUrl = artUrl,
+                                            title = current.name,
+                                            artist = current.trackArtist.orEmpty(),
+                                            lyric = line,
+                                            accent = accent.toArgb(),
+                                        )
+                                        if (file != null) LyricsPoster.share(context, file)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.highlight)) },
+                                onClick = {
+                                    moreMenuOpen = false
+                                    val start = state.audioFeatures.get(current.id)?.highlightStartMs
+                                    if (start != null && start > 0L) {
+                                        player.seekTo(start)
+                                        if (!player.isPlaying) player.toggle()
+                                    }
                                 },
                             )
                             DropdownMenuItem(
@@ -1590,3 +1621,14 @@ private fun formatSpeed(speed: Float): String =
 
 private fun formatLyricsOffset(offsetMs: Long): String =
     "%+.1f".format(offsetMs / 1000.0)
+
+private fun currentLyricLine(lyrics: List<LyricLine>?, positionMs: Long): String {
+    if (lyrics.isNullOrEmpty()) return ""
+    val synced = lyrics.filter { it.startMs != null }
+    if (synced.isEmpty()) return lyrics.first().text
+    var current = synced.first()
+    for (line in synced) {
+        if ((line.startMs ?: 0L) <= positionMs) current = line else break
+    }
+    return current.text
+}

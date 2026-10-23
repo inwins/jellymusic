@@ -164,6 +164,12 @@ fun AudioFeaturesScreen(state: AppState, screen: Screen.AudioFeatures) {
                             keyIndex = features.keyIndex,
                             minor = features.minor,
                         )
+                        if (features.highlightStartMs > 0L) {
+                            FeatureRow(
+                                stringResource(R.string.highlight),
+                                com.example.jellymusic.util.formatDuration(features.highlightStartMs),
+                            )
+                        }
                         if (uri != null) {
                             TextButton(onClick = { state.audioFeatures.analyze(item, uri) }) {
                                 Text(stringResource(R.string.reanalyze))

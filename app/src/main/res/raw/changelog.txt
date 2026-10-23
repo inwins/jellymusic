@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.19.0
+- Running radio: build a queue matched to a target BPM/cadence
+- Highlight: jump to the most energetic 30 seconds of a song
+- Lyrics poster: generate and share an image of the current lyric
+
 2.18.0
 - Vinyl option: circular, slowly rotating album art
 - Swipe up on the mini player to open the Now Playing screen

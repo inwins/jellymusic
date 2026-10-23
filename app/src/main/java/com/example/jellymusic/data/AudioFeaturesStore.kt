@@ -119,6 +119,20 @@ class AudioFeaturesStore(context: Context) {
         return ordered
     }
 
+    fun runningRadio(targetBpm: Int, tolerance: Int = 18, limit: Int = 60): List<BaseItem> {
+        return features.entries
+            .asSequence()
+            .mapNotNull { entry ->
+                val item = items[entry.key] ?: return@mapNotNull null
+                val delta = kotlin.math.abs(entry.value.bpm - targetBpm)
+                if (delta > tolerance) null else Triple(item, delta, entry.value.energy)
+            }
+            .sortedWith(compareBy({ it.second }, { -it.third }))
+            .take(limit)
+            .map { it.first }
+            .toList()
+    }
+
     fun similar(item: BaseItem, limit: Int = 20): List<BaseItem> {
         val seed = features[item.id] ?: return emptyList()
         val seedVector = AudioFeatures.vector(seed)

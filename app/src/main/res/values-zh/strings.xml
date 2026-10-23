@@ -298,6 +298,10 @@
     <string name="top_albums">最常听专辑</string>
     <string name="library_songs">曲库歌曲</string>
     <string name="total_plays">总播放次数</string>
+    <string name="running_radio">跑步电台</string>
+    <string name="target_bpm">目标步频</string>
+    <string name="highlight">精彩片段</string>
+    <string name="lyrics_poster">歌词海报</string>
     <string name="smart_playlists">智能歌单</string>
     <string name="recent_played">最近播放</string>
     <string name="most_played">最常播放</string>

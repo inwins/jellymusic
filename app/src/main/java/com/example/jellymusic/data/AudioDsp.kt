@@ -178,6 +178,30 @@ object AudioDsp {
             pitchHistogram = pitchHistogram,
             chords = buildChords(frameChroma, bpm, sampleRate),
             timeSignature = estimateTimeSignature(flux, bpm, sampleRate),
+            highlightStartMs = run {
+                if (frameRms.isEmpty()) {
+                    0L
+                } else {
+                    val frameMs = HOP * 1000L / sampleRate
+                    val window = (30_000L / frameMs).toInt().coerceAtLeast(1)
+                    if (frameRms.size <= window) {
+                        0L
+                    } else {
+                        var bestSum = 0f
+                        var bestStart = 0
+                        var sum = 0f
+                        for (i in frameRms.indices) {
+                            sum += frameRms[i]
+                            if (i >= window) sum -= frameRms[i - window]
+                            if (i >= window - 1 && sum > bestSum) {
+                                bestSum = sum
+                                bestStart = i - window + 1
+                            }
+                        }
+                        bestStart * frameMs
+                    }
+                }
+            },
             melodyConfidence = run {
                 val voiced = frameSalience.filterIndexed { index, _ ->
                     framePitch.getOrElse(index) { 0f } > 0f

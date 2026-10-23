@@ -60,6 +60,7 @@ data class AudioFeatures(
     val keyConfidence: Float = 0f,
     val mfcc: List<Float> = emptyList(),
     val melodyConfidence: Float = 0f,
+    val highlightStartMs: Long = 0L,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("bpm", bpm.toDouble())
@@ -84,6 +85,7 @@ data class AudioFeatures(
         .put("keyConfidence", keyConfidence.toDouble())
         .put("mfcc", JSONArray(mfcc))
         .put("melodyConfidence", melodyConfidence.toDouble())
+        .put("highlightStartMs", highlightStartMs)
 
     companion object {
         fun fromJson(json: JSONObject): AudioFeatures {
@@ -124,6 +126,7 @@ data class AudioFeatures(
                     (0 until array.length()).map { array.optDouble(it).toFloat() }
                 } ?: emptyList(),
                 melodyConfidence = json.optDouble("melodyConfidence").toFloat(),
+                highlightStartMs = json.optLong("highlightStartMs"),
             )
         }
 
