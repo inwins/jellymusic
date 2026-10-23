@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.23.2
+- Offline mode: browse downloaded/local music by album and artist, with offline detail pages
+- Offline search now covers albums and artists
+- Offline home includes local imported music
+
 2.23.1
 - Music theory lessons now list example songs; matches are looked up in your library and playable
 

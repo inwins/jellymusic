@@ -297,7 +297,9 @@ fun HomeTab(state: AppState) {
 @Composable
 fun OfflineHome(state: AppState) {
     val downloadedMap = state.downloads.downloadedIds
-    val items = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
+    val items = remember(downloadedMap.toMap(), state.localMusic.songs.size) {
+        (state.downloads.downloadedItems() + state.localMusic.songs).distinctBy { it.id }
+    }
 
     if (items.isEmpty()) {
         Column(
@@ -361,7 +363,34 @@ private enum class ArtistSort(
 @Composable
 fun AlbumsTab(state: AppState) {
     if (state.isOffline) {
-        EmptyHint(stringResource(R.string.offline_hint))
+        val offlineAlbums = remember(
+            state.downloads.downloadedIds.size,
+            state.localMusic.songs.size,
+        ) { state.offlineAlbums() }
+        if (offlineAlbums.isEmpty()) {
+            EmptyHint(stringResource(R.string.no_downloaded_songs))
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(offlineAlbums, key = { it.id }) { album ->
+                    CardItem(
+                        item = album,
+                        artworkUrl = state.artworkUrl(album, 400),
+                        subtitle = with(album.childCount ?: 0) {
+                            stringResource(R.string.track_count, this)
+                        },
+                        onClick = {
+                            state.navigate(Screen.OfflineAlbum(album.id, album.name))
+                        },
+                    )
+                }
+            }
+        }
         return
     }
 
@@ -548,7 +577,32 @@ fun AlbumsTab(state: AppState) {
 @Composable
 fun ArtistsTab(state: AppState) {
     if (state.isOffline) {
-        EmptyHint(stringResource(R.string.offline_hint))
+        val offlineArtists = remember(
+            state.downloads.downloadedIds.size,
+            state.localMusic.songs.size,
+        ) { state.offlineArtists() }
+        if (offlineArtists.isEmpty()) {
+            EmptyHint(stringResource(R.string.no_downloaded_songs))
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(offlineArtists, key = { it.id }) { artist ->
+                    CardItem(
+                        item = artist,
+                        artworkUrl = state.artworkUrl(artist, 400),
+                        subtitle = stringResource(R.string.artist),
+                        onClick = {
+                            state.navigate(Screen.OfflineArtist(artist.name))
+                        },
+                    )
+                }
+            }
+        }
         return
     }
 

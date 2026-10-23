@@ -403,6 +403,52 @@ class AppState(private val context: Context) {
         }
     }
 
+    fun offlineSongs(): List<BaseItem> =
+        (downloads.downloadedItems() + localMusic.songs).distinctBy { it.id }
+
+    fun offlineAlbums(): List<BaseItem> {
+        return offlineSongs()
+            .groupBy { it.albumId ?: it.album ?: "未知专辑" }
+            .map { (key, list) ->
+                BaseItem(
+                    id = key,
+                    name = list.firstOrNull()?.album ?: "未知专辑",
+                    type = "MusicAlbum",
+                    isFolder = true,
+                    albumArtist = list.firstOrNull()?.albumArtist,
+                    hasImage = list.any { it.hasImage },
+                    childCount = list.size,
+                )
+            }
+            .sortedBy { it.name }
+    }
+
+    fun offlineArtists(): List<BaseItem> {
+        return offlineSongs()
+            .groupBy { it.trackArtist ?: "未知艺术家" }
+            .map { (name, list) ->
+                BaseItem(
+                    id = name,
+                    name = name,
+                    type = "MusicArtist",
+                    isFolder = true,
+                    hasImage = false,
+                    childCount = list.size,
+                )
+            }
+            .sortedBy { it.name }
+    }
+
+    fun offlineAlbumTracks(key: String): List<BaseItem> =
+        offlineSongs()
+            .filter { (it.albumId ?: it.album ?: "未知专辑") == key }
+            .sortedWith(compareBy({ it.discNumber ?: 1 }, { it.trackNumber ?: 0 }, { it.name }))
+
+    fun offlineArtistTracks(name: String): List<BaseItem> =
+        offlineSongs()
+            .filter { (it.trackArtist ?: "未知艺术家") == name }
+            .sortedWith(compareBy({ it.album ?: "" }, { it.discNumber ?: 1 }, { it.trackNumber ?: 0 }, { it.name }))
+
     fun artworkUrl(item: BaseItem, size: Int): String? {
         if (item.localUri != null) {
             localMusic.artFile(item.id)?.let { return Uri.fromFile(it).toString() }

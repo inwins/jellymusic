@@ -14,6 +14,8 @@ sealed class Screen {
     data object SmartPlaylists : Screen()
     data object ListeningStats : Screen()
     data object RunningRadio : Screen()
+    data class OfflineAlbum(val key: String, val name: String) : Screen()
+    data class OfflineArtist(val name: String) : Screen()
     data object Daily : Screen()
     data object Practice : Screen()
     data object Theory : Screen()

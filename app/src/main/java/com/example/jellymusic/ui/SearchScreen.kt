@@ -85,9 +85,10 @@ fun SearchScreen(state: AppState) {
         error = null
         try {
             if (state.isOffline) {
-                if (kind == 0) {
-                    songs = (state.downloads.downloadedItems() + state.localMusic.songs)
-                        .distinctBy { it.id }
+                when (kind) {
+                    0 -> songs = state.offlineSongs()
+                    1 -> albums = state.offlineAlbums()
+                    else -> artists = state.offlineArtists()
                 }
                 return@LaunchedEffect
             }
@@ -241,11 +242,7 @@ fun SearchScreen(state: AppState) {
                         }
                     }
 
-                    if (state.isOffline && kind != 0) {
-                        item {
-                            EmptyHint(stringResource(R.string.offline_hint))
-                        }
-                    } else if (filtered.isEmpty()) {
+                    if (filtered.isEmpty()) {
                         item {
                             EmptyHint(
                                 stringResource(
@@ -298,9 +295,17 @@ fun SearchScreen(state: AppState) {
                                     .clickable {
                                         if (needle.isNotBlank()) state.searchHistory.add(needle)
                                         if (kind == 1) {
-                                            state.navigate(Screen.Album(item.id, item.name))
+                                            if (state.isOffline) {
+                                                state.navigate(Screen.OfflineAlbum(item.id, item.name))
+                                            } else {
+                                                state.navigate(Screen.Album(item.id, item.name))
+                                            }
                                         } else {
-                                            state.navigate(Screen.Artist(item.id, item.name))
+                                            if (state.isOffline) {
+                                                state.navigate(Screen.OfflineArtist(item.name))
+                                            } else {
+                                                state.navigate(Screen.Artist(item.id, item.name))
+                                            }
                                         }
                                     }
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
