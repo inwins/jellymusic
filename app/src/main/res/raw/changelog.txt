@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.23.1
+- Music theory lessons now list example songs; matches are looked up in your library and playable
+
 2.23.0
 - Music theory basics: 8 short guided lessons with audio examples and completion progress
 

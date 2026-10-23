@@ -278,6 +278,8 @@
     <string name="theory_progression_body">I–V–vi–IV 是流行歌最常用的进行之一，例如 C–G–Am–F。</string>
     <string name="theory_penta_title">五声音阶</string>
     <string name="theory_penta_body">五声音阶去掉大调的 4、7 级，只剩 5 个音，中国风旋律常用。</string>
+    <string name="theory_examples">示例歌曲</string>
+    <string name="theory_not_found">曲库未找到</string>
     <string name="theory_play">试听示例</string>
     <string name="theory_done">已完成</string>
     <string name="theory_mark_done">标记完成</string>

@@ -278,6 +278,8 @@
     <string name="theory_progression_body">I–V–vi–IV is one of the most common pop progressions, for example C–G–Am–F.</string>
     <string name="theory_penta_title">Pentatonic scale</string>
     <string name="theory_penta_body">The pentatonic scale drops the 4th and 7th degrees, leaving five notes often used in Chinese-style melodies.</string>
+    <string name="theory_examples">Example songs</string>
+    <string name="theory_not_found">Not in library</string>
     <string name="theory_play">Play example</string>
     <string name="theory_done">Completed</string>
     <string name="theory_mark_done">Mark completed</string>
