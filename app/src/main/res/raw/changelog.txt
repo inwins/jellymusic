@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.26.6
+- Artist songs are grouped by album with album headers, and can be sorted by album or by name
+- Fixed the "Show all songs" button being hidden behind the mini player
+
 2.26.5
 - Artist songs: a "Collapse" button at both the top and the end when the full list is expanded
 

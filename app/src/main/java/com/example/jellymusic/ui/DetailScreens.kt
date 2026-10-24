@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.widget.Toast
@@ -206,16 +207,32 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
             val songs = content.songs
             var similarArtists by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
             var showAllSongs by remember(screen.id) { mutableStateOf(false) }
-            val visibleSongs = remember(songs, showAllSongs) {
-                if (showAllSongs) songs else songs.take(50)
+            var sortByAlbum by remember(screen.id) { mutableStateOf(true) }
+            val orderedSongs = remember(songs, sortByAlbum) {
+                if (sortByAlbum) {
+                    songs
+                } else {
+                    val collator = java.text.Collator.getInstance(java.util.Locale.CHINA)
+                    songs.sortedWith(compareBy(collator) { it.name })
+                }
+            }
+            val visibleSongs = remember(orderedSongs, showAllSongs) {
+                if (showAllSongs) orderedSongs else orderedSongs.take(50)
             }
             LaunchedEffect(screen.id) {
                 similarArtists = runCatching {
                     state.requireApi().getSimilarArtists(screen.id, 20)
                 }.getOrDefault(emptyList())
             }
+            val songGroups = remember(visibleSongs, sortByAlbum) {
+                if (sortByAlbum) {
+                    visibleSongs.withIndex().groupBy { it.value.album ?: "" }
+                } else {
+                    emptyMap()
+                }
+            }
             LazyColumn(
-                contentPadding = PaddingValues(12.dp),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -265,43 +282,81 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { sortByAlbum = !sortByAlbum }) {
+                                Text(
+                                    stringResource(
+                                        if (sortByAlbum) R.string.tab_albums else R.string.sort_name,
+                                    ),
+                                )
+                            }
                             if (showAllSongs) {
-                                Spacer(Modifier.weight(1f))
                                 TextButton(onClick = { showAllSongs = false }) {
                                     Text(stringResource(R.string.collapse))
                                 }
                             }
                         }
                     }
-                    itemsIndexed(visibleSongs, key = { _, song -> song.id }) { index, song ->
-                        TrackRow(
-                            item = song,
-                            index = index + 1,
-                            artworkUrl = state.artworkUrl(song, 120),
-                            onClick = { state.player.play(visibleSongs, index) },
-                            showArtwork = true,
-                            isCurrent = state.player.current?.id == song.id,
-                            favorite = state.favorites.isFavorite(song),
-                            onToggleFavorite = { state.favorites.toggle(song) },
-                            downloaded = state.downloads.downloadedIds[song.id] == true,
-                            downloading = state.downloads.progress[song.id],
-                            downloadError = state.downloads.errors[song.id] != null,
-                            cached = state.streamCache.isCached(song.id),
-                            onDownload = {
-                                state.api?.let { api ->
-                                    state.downloads.download(api, song)
-                                }
-                            },
-                            onLongClick = { state.trackMenu = song },
-                        )
+                    if (sortByAlbum) {
+                        songGroups.forEach { (album, entries) ->
+                            if (album.isNotBlank()) {
+                                item(key = "album-$album") { AlbumHeader(album) }
+                            }
+                            itemsIndexed(entries, key = { _, entry -> entry.value.id }) { _, entry ->
+                                val song = entry.value
+                                TrackRow(
+                                    item = song,
+                                    index = entry.index + 1,
+                                    artworkUrl = state.artworkUrl(song, 120),
+                                    onClick = { state.player.play(visibleSongs, entry.index) },
+                                    showArtwork = true,
+                                    isCurrent = state.player.current?.id == song.id,
+                                    favorite = state.favorites.isFavorite(song),
+                                    onToggleFavorite = { state.favorites.toggle(song) },
+                                    downloaded = state.downloads.downloadedIds[song.id] == true,
+                                    downloading = state.downloads.progress[song.id],
+                                    downloadError = state.downloads.errors[song.id] != null,
+                                    cached = state.streamCache.isCached(song.id),
+                                    onDownload = {
+                                        state.api?.let { api ->
+                                            state.downloads.download(api, song)
+                                        }
+                                    },
+                                    onLongClick = { state.trackMenu = song },
+                                )
+                            }
+                        }
+                    } else {
+                        itemsIndexed(visibleSongs, key = { _, song -> song.id }) { index, song ->
+                            TrackRow(
+                                item = song,
+                                index = index + 1,
+                                artworkUrl = state.artworkUrl(song, 120),
+                                onClick = { state.player.play(visibleSongs, index) },
+                                showArtwork = true,
+                                isCurrent = state.player.current?.id == song.id,
+                                favorite = state.favorites.isFavorite(song),
+                                onToggleFavorite = { state.favorites.toggle(song) },
+                                downloaded = state.downloads.downloadedIds[song.id] == true,
+                                downloading = state.downloads.progress[song.id],
+                                downloadError = state.downloads.errors[song.id] != null,
+                                cached = state.streamCache.isCached(song.id),
+                                onDownload = {
+                                    state.api?.let { api ->
+                                        state.downloads.download(api, song)
+                                    }
+                                },
+                                onLongClick = { state.trackMenu = song },
+                            )
+                        }
                     }
-                    if (songs.size > 50) {
+                    if (orderedSongs.size > 50) {
                         item {
                             TextButton(onClick = { showAllSongs = !showAllSongs }) {
                                 if (showAllSongs) {
                                     Text(stringResource(R.string.collapse))
                                 } else {
-                                    Text(stringResource(R.string.show_all_count, songs.size))
+                                    Text(stringResource(R.string.show_all_count, orderedSongs.size))
                                 }
                             }
                         }
@@ -688,5 +743,20 @@ fun DetailHeader(
                 }
             }
         }
+    }
+}
+@Composable
+private fun AlbumHeader(title: String) {
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        )
     }
 }
