@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.26.0
+- Now Playing visuals: multi-colour palette gradient from the cover, coloured glow behind the artwork, beat-synced breathing and a frosted-glass control panel
+
 2.25.0
 - Vocal training: range test, sustain/breath, sing-back, guided warm-up and rhythm tap
 - Fix: the tuner read the microphone on the main thread, which could freeze the app (ANR)

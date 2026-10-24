@@ -267,7 +267,7 @@ fun NowPlayingScreen(state: AppState) {
     val artUrl = state.artworkUrl(current, 800)
     val backgroundUrl = state.settings.customBackgroundUri ?: artUrl
     val lyricsOffset = state.settings.lyricsOffsetFor(current.id)
-    val paletteAccent by produceState<Color?>(initialValue = null, artUrl) {
+    val paletteColors by produceState<List<Color>>(initialValue = emptyList(), artUrl) {
         val url = artUrl ?: return@produceState
         value = withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
@@ -278,15 +278,21 @@ fun NowPlayingScreen(state: AppState) {
                 val result = coil.Coil.imageLoader(context).execute(request)
                 val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
                 bitmap?.let { bmp ->
-                    Palette.from(bmp).generate().vibrantSwatch?.rgb?.let { Color(it) }
-                }
-            }.getOrNull()
+                    val palette = Palette.from(bmp).generate()
+                    listOfNotNull(
+                        palette.vibrantSwatch?.rgb,
+                        palette.darkVibrantSwatch?.rgb,
+                        palette.mutedSwatch?.rgb,
+                        palette.dominantSwatch?.rgb,
+                    ).distinct().map { Color(it) }
+                } ?: emptyList()
+            }.getOrDefault(emptyList())
         }
     }
     val keyAccent = state.audioFeatures.get(current.id)?.let {
         Color.hsv(MusicTheory.camelotHue(it.keyIndex, it.minor), 0.55f, 0.95f)
     }
-    val accent = paletteAccent ?: keyAccent ?: MaterialTheme.colorScheme.primary
+    val accent = paletteColors.firstOrNull() ?: keyAccent ?: MaterialTheme.colorScheme.primary
     val recordPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -330,18 +336,34 @@ fun NowPlayingScreen(state: AppState) {
                 modifier = Modifier
                     .fillMaxSize()
                     .blur(60.dp)
-                    .alpha(0.30f),
+                    .alpha(0.24f),
             )
         }
+        val paletteTop = paletteColors.getOrNull(0) ?: MaterialTheme.colorScheme.background
+        val paletteMid = paletteColors.getOrNull(1) ?: paletteTop
+        val paletteBottom = paletteColors.getOrNull(2) ?: paletteMid
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.78f),
-                            MaterialTheme.colorScheme.background,
+                            paletteTop.copy(alpha = 0.55f),
+                            paletteMid.copy(alpha = 0.35f),
+                            paletteBottom.copy(alpha = 0.2f),
+                        ),
+                    ),
+                ),
+        )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.35f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
                         ),
                     ),
                 ),
@@ -736,6 +758,7 @@ fun NowPlayingScreen(state: AppState) {
                             gesturesEnabled = state.settings.gesturesEnabled,
                             circle = state.settings.coverShape == 1,
                             isPlaying = player.isPlaying,
+                            bpm = state.audioFeatures.get(current.id)?.bpm ?: 0f,
                             onTogglePlay = { player.toggle() },
                             onNext = { player.next() },
                             onPrevious = { player.previous() },
@@ -811,10 +834,18 @@ fun NowPlayingScreen(state: AppState) {
                     }
                 }
 
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                    tonalElevation = 2.dp,
+                ) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                 ) {
                     val bpm = state.audioFeatures.get(current.id)?.bpm
                         ?.takeIf { it > 0f } ?: 120f
@@ -986,6 +1017,7 @@ fun NowPlayingScreen(state: AppState) {
                         }
                     }
                     Spacer(Modifier.height(6.dp))
+                }
                 }
             }
         }
@@ -1176,6 +1208,7 @@ private fun CoverPage(
     gesturesEnabled: Boolean,
     circle: Boolean,
     isPlaying: Boolean,
+    bpm: Float,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -1193,6 +1226,18 @@ private fun CoverPage(
         ) {
             val side = minOf(maxWidth * 0.82f, maxHeight * 0.9f, 360.dp)
             val rotation = remember { Animatable(0f) }
+            val beatPulse = remember { Animatable(1f) }
+            LaunchedEffect(bpm, isPlaying) {
+                if (!isPlaying || bpm <= 0f) {
+                    beatPulse.snapTo(1f)
+                    return@LaunchedEffect
+                }
+                val period = (60_000f / bpm).toInt().coerceAtLeast(200)
+                while (true) {
+                    beatPulse.animateTo(1.03f, tween((period / 6).coerceAtLeast(40)))
+                    beatPulse.animateTo(1f, tween((period * 5 / 6).coerceAtLeast(120)))
+                }
+            }
             LaunchedEffect(isPlaying, circle) {
                 if (circle && isPlaying) {
                     while (true) {
@@ -1207,6 +1252,16 @@ private fun CoverPage(
                 Modifier.size(side * 1.5f),
                 contentAlignment = Alignment.Center,
             ) {
+                Box(
+                    Modifier
+                        .size(side * 1.15f)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(accent.copy(alpha = 0.45f), Color.Transparent),
+                            ),
+                            CircleShape,
+                        ),
+                )
                 if (showRing) {
                     SpectrumRing(
                         bands = bands,
@@ -1217,7 +1272,12 @@ private fun CoverPage(
                 Box(
                     Modifier
                         .size(side)
-                        .graphicsLayer { rotationZ = if (circle) rotation.value else 0f }
+                        .graphicsLayer {
+                            rotationZ = if (circle) rotation.value else 0f
+                            val pulse = beatPulse.value
+                            scaleX = pulse
+                            scaleY = pulse
+                        }
                         .shadow(18.dp, if (circle) CircleShape else RoundedCornerShape(20.dp))
                         .clip(if (circle) CircleShape else RoundedCornerShape(20.dp))
                         .pointerInput(gesturesEnabled) {
