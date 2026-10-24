@@ -10,20 +10,34 @@ import kotlin.math.sin
 class Metronome {
     private var track: AudioTrack? = null
 
-    fun start(bpm: Int, beatsPerBar: Int = 4) {
+    fun start(bpm: Int, beatsPerBar: Int = 4, subdivision: Int = 1) {
         stop()
         val safeBpm = bpm.coerceIn(30, 240)
+        val sub = subdivision.coerceIn(1, 4)
         val sampleRate = 22_050
         val samplesPerBeat = sampleRate * 60 / safeBpm
-        val total = samplesPerBeat * beatsPerBar
+        val samplesPerTick = samplesPerBeat / sub
+        val ticksPerBar = beatsPerBar * sub
+        val total = samplesPerTick * ticksPerBar
         val buffer = ShortArray(total)
         val clickLength = (sampleRate * 0.045).toInt()
-        for (beat in 0 until beatsPerBar) {
-            val start = beat * samplesPerBeat
-            val frequency = if (beat == 0) 1_600.0 else 1_000.0
+        for (tick in 0 until ticksPerBar) {
+            val start = tick * samplesPerTick
+            val isBeat = tick % sub == 0
+            val beat = tick / sub
+            val frequency = when {
+                isBeat && beat == 0 -> 1_600.0
+                isBeat -> 1_000.0
+                else -> 800.0
+            }
+            val volume = when {
+                isBeat && beat == 0 -> 0.45
+                isBeat -> 0.32
+                else -> 0.12
+            }
             for (i in 0 until clickLength) {
                 val envelope = 1.0 - i.toDouble() / clickLength
-                val value = sin(2.0 * PI * frequency * i / sampleRate) * envelope * 0.4
+                val value = sin(2.0 * PI * frequency * i / sampleRate) * envelope * volume
                 buffer[start + i] = (value * 32767).toInt().toShort()
             }
         }

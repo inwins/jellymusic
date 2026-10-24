@@ -249,6 +249,15 @@
     <string name="suggest_transpose">建议移调</string>
     <string name="apply">应用</string>
     <string name="ear_training">听音训练</string>
+    <string name="chord_library">和弦库</string>
+    <string name="scale_visualizer">音阶图</string>
+    <string name="drum_machine">鼓机</string>
+    <string name="tap_tempo">点击测速</string>
+    <string name="subdivision">细分</string>
+    <string name="tempo_trainer">渐速训练</string>
+    <string name="instrument_tools">乐器工具</string>
+    <string name="arpeggio">分解和弦</string>
+    <string name="random_progression">随机进行</string>
     <string name="tuner">调音器</string>
     <string name="metronome">节拍器</string>
     <string name="interval">音程</string>

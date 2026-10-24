@@ -41,6 +41,8 @@ fun PracticeScreen(state: AppState) {
     var scaleIndex by remember { mutableIntStateOf(0) }
     var progressionIndex by remember { mutableIntStateOf(0) }
     var tempo by remember { mutableIntStateOf(90) }
+    var arpeggio by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var randomDegrees by remember { androidx.compose.runtime.mutableStateOf<IntArray?>(null) }
     val tonePlayer = remember { TonePlayer() }
     DisposableEffect(Unit) { onDispose { tonePlayer.stop() } }
 
@@ -117,13 +119,35 @@ fun PracticeScreen(state: AppState) {
                 items(PROGRESSIONS.indices.toList()) { index ->
                     FilterChip(
                         selected = progressionIndex == index,
-                        onClick = { progressionIndex = index },
+                        onClick = {
+                            progressionIndex = index
+                            randomDegrees = null
+                        },
                         label = { Text(PROGRESSIONS[index].first) },
                     )
                 }
             }
         }
 
+        if (mode == 1) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = arpeggio,
+                    onClick = { arpeggio = !arpeggio },
+                    label = { Text(stringResource(R.string.arpeggio)) },
+                )
+                androidx.compose.material3.TextButton(onClick = {
+                    randomDegrees = IntArray(4) { listOf(0, 1, 2, 3, 4, 5).random() }
+                }) {
+                    Text(stringResource(R.string.random_progression))
+                }
+            }
+        }
         Text(
             stringResource(R.string.tempo) + ": $tempo",
             style = MaterialTheme.typography.bodyMedium,
@@ -150,10 +174,15 @@ fun PracticeScreen(state: AppState) {
                     val intervals = MusicTheory.SCALES[scaleIndex].intervals
                     val n = intervals.size
                     fun note(index: Int): Int = base + intervals[index % n] + (index / n) * 12
-                    val chords = PROGRESSIONS[progressionIndex].second.map { degree ->
+                    val degrees = randomDegrees ?: PROGRESSIONS[progressionIndex].second
+                    val chords = degrees.map { degree ->
                         listOf(note(degree), note(degree + 2), note(degree + 4))
                     }
-                    tonePlayer.playChords(chords, spacingMs)
+                    if (arpeggio) {
+                        tonePlayer.play(chords.flatten(), (spacingMs / 2).coerceAtLeast(100))
+                    } else {
+                        tonePlayer.playChords(chords, spacingMs)
+                    }
                 }
             },
             modifier = Modifier.padding(16.dp),

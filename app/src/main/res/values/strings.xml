@@ -249,6 +249,15 @@
     <string name="suggest_transpose">Suggested transpose</string>
     <string name="apply">Apply</string>
     <string name="ear_training">Ear training</string>
+    <string name="chord_library">Chord library</string>
+    <string name="scale_visualizer">Scale map</string>
+    <string name="drum_machine">Drum machine</string>
+    <string name="tap_tempo">Tap tempo</string>
+    <string name="subdivision">Subdivision</string>
+    <string name="tempo_trainer">Tempo trainer</string>
+    <string name="instrument_tools">Instrument tools</string>
+    <string name="arpeggio">Arpeggio</string>
+    <string name="random_progression">Random progression</string>
     <string name="tuner">Tuner</string>
     <string name="metronome">Metronome</string>
     <string name="interval">Interval</string>

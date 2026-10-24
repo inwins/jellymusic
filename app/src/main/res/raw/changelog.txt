@@ -1,5 +1,13 @@
 Jellyfin Music — Changelog
 
+2.24.0
+- Multi-instrument tuner: guitar (standard/Drop D), ukulele, bass and violin, with per-string guidance and reference tones
+- Chord library with guitar/ukulele fretboard and piano diagrams, tap to play
+- Scale map: highlighted notes on a guitar fretboard or piano keyboard
+- Drum machine (kick/snare/hi-hat) with 4/4 and 3/4
+- Metronome screen: tap tempo, time signature, subdivisions and tempo trainer
+- Practice: random chord progression and arpeggio mode
+
 2.23.2
 - Offline mode: browse downloaded/local music by album and artist, with offline detail pages
 - Offline search now covers albums and artists
