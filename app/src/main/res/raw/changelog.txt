@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.26.5
+- Artist songs: a "Collapse" button at both the top and the end when the full list is expanded
+
 2.26.4
 - Artist page shows the first 50 songs by default, with a "Show all" button to expand
 

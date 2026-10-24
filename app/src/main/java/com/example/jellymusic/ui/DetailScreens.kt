@@ -260,7 +260,18 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 }
                 if (songs.isNotEmpty()) {
                     item {
-                        SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
+                            if (showAllSongs) {
+                                Spacer(Modifier.weight(1f))
+                                TextButton(onClick = { showAllSongs = false }) {
+                                    Text(stringResource(R.string.collapse))
+                                }
+                            }
+                        }
                     }
                     itemsIndexed(visibleSongs, key = { _, song -> song.id }) { index, song ->
                         TrackRow(
@@ -284,10 +295,14 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                             onLongClick = { state.trackMenu = song },
                         )
                     }
-                    if (!showAllSongs && songs.size > visibleSongs.size) {
+                    if (songs.size > 50) {
                         item {
-                            TextButton(onClick = { showAllSongs = true }) {
-                                Text(stringResource(R.string.show_all_count, songs.size))
+                            TextButton(onClick = { showAllSongs = !showAllSongs }) {
+                                if (showAllSongs) {
+                                    Text(stringResource(R.string.collapse))
+                                } else {
+                                    Text(stringResource(R.string.show_all_count, songs.size))
+                                }
                             }
                         }
                     }
