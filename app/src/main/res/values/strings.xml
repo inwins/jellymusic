@@ -69,6 +69,15 @@
     <string name="visualizer_style">Visualizer style</string>
     <string name="visualizer">Visualizer</string>
     <string name="visualizer_permission">Microphone permission is needed for the visualizer</string>
+    <string name="visualizer_tap_hint">Tap the screen to play or pause</string>
+    <string name="visualizer_fullscreen">Full screen</string>
+    <string name="exit_fullscreen">Exit full screen</string>
+    <string name="visualizer_style_bars">Bars</string>
+    <string name="visualizer_style_ring">Ring</string>
+    <string name="visualizer_style_both">Ring + bars</string>
+    <string name="visualizer_style_wave">Waveform</string>
+    <string name="visualizer_style_mirror">Mirrored spectrum</string>
+    <string name="visualizer_style_particles">Particles</string>
     <string name="scale_label">Scale</string>
     <string name="scale_notes">Scale notes</string>
     <string name="melody_confidence">Melody confidence</string>

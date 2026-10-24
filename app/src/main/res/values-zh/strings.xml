@@ -69,6 +69,15 @@
     <string name="visualizer_style">可视化样式</string>
     <string name="visualizer">可视化</string>
     <string name="visualizer_permission">可视化需要麦克风权限</string>
+    <string name="visualizer_tap_hint">轻点屏幕播放 / 暂停</string>
+    <string name="visualizer_fullscreen">全屏</string>
+    <string name="exit_fullscreen">退出全屏</string>
+    <string name="visualizer_style_bars">条形</string>
+    <string name="visualizer_style_ring">环形</string>
+    <string name="visualizer_style_both">环形 + 条形</string>
+    <string name="visualizer_style_wave">波形</string>
+    <string name="visualizer_style_mirror">镜像频谱</string>
+    <string name="visualizer_style_particles">粒子</string>
     <string name="scale_label">音阶</string>
     <string name="scale_notes">音阶音</string>
     <string name="melody_confidence">旋律置信度</string>

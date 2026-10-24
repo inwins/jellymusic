@@ -11,6 +11,7 @@ import kotlin.math.sqrt
  */
 class VisualizerController(@Suppress("UNUSED_PARAMETER") context: Context) {
     val bands = mutableStateOf(FloatArray(BANDS))
+    val waveform = mutableStateOf(FloatArray(WAVE_POINTS))
     val enabled = mutableStateOf(false)
     val failed = mutableStateOf(false)
 
@@ -28,9 +29,17 @@ class VisualizerController(@Suppress("UNUSED_PARAMETER") context: Context) {
                 object : Visualizer.OnDataCaptureListener {
                     override fun onWaveFormDataCapture(
                         visualizer: Visualizer?,
-                        waveform: ByteArray?,
+                        wave: ByteArray?,
                         samplingRate: Int,
-                    ) = Unit
+                    ) {
+                        if (wave == null) return
+                        val out = FloatArray(WAVE_POINTS)
+                        val step = (wave.size / WAVE_POINTS).coerceAtLeast(1)
+                        for (i in out.indices) {
+                            out[i] = (wave[i * step].toInt() / 128f).coerceIn(-1f, 1f)
+                        }
+                        waveform.value = out
+                    }
 
                     override fun onFftDataCapture(
                         visualizer: Visualizer?,
@@ -42,7 +51,7 @@ class VisualizerController(@Suppress("UNUSED_PARAMETER") context: Context) {
                     }
                 },
                 Visualizer.getMaxCaptureRate(),
-                false,
+                true,
                 true,
             )
             instance.enabled = true
@@ -64,6 +73,7 @@ class VisualizerController(@Suppress("UNUSED_PARAMETER") context: Context) {
         enabled.value = false
         smoothed = FloatArray(BANDS)
         bands.value = FloatArray(BANDS)
+        waveform.value = FloatArray(WAVE_POINTS)
     }
 
     private fun toBands(fft: ByteArray): FloatArray {
@@ -94,5 +104,6 @@ class VisualizerController(@Suppress("UNUSED_PARAMETER") context: Context) {
     private companion object {
         const val BANDS = 48
         const val FFT_SIZE = 1024
+        const val WAVE_POINTS = 128
     }
 }

@@ -98,6 +98,17 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import coil.request.ImageRequest
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,6 +124,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import android.app.Activity
+import android.content.ContextWrapper
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import androidx.compose.ui.graphics.toArgb
@@ -224,6 +241,7 @@ fun NowPlayingScreen(state: AppState) {
     val current = player.current ?: return
 
     var lyricsFullScreen by rememberSaveable { mutableStateOf(false) }
+    var visualizerFullScreen by rememberSaveable { mutableStateOf(false) }
     var dragPosition by remember { mutableStateOf<Float?>(null) }
     var showQueue by remember { mutableStateOf(false) }
     var queueQuery by remember { mutableStateOf("") }
@@ -320,6 +338,9 @@ fun NowPlayingScreen(state: AppState) {
     DisposableEffect(Unit) {
         onDispose { state.visualizer.stop() }
     }
+    LaunchedEffect(state.settings.visualizerEnabled) {
+        if (!state.settings.visualizerEnabled) visualizerFullScreen = false
+    }
     val downloadLabel = when {
         downloadProgress != null -> R.string.cancel_download
         downloaded -> R.string.delete_download
@@ -369,8 +390,20 @@ fun NowPlayingScreen(state: AppState) {
                 ),
         )
 
-        if (lyricsFullScreen) {
-            FullScreenLyrics(
+        if (visualizerFullScreen) {
+            FullScreenVisualizer(
+                bands = state.visualizer.bands.value,
+                waveform = state.visualizer.waveform.value,
+                accent = accent,
+                style = state.settings.visualizerStyle,
+                title = current.name,
+                onClose = { visualizerFullScreen = false },
+                onTogglePlay = { player.toggle() },
+            )
+        } else if (lyricsFullScreen) {
+            Box(Modifier.fillMaxSize()) {
+                LyricsBackground(backgroundUrl, accent)
+                FullScreenLyrics(
                 title = current.name,
                 lyrics = lyrics,
                 positionMs = player.positionMs,
@@ -384,7 +417,8 @@ fun NowPlayingScreen(state: AppState) {
                     .fillMaxSize()
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp),
-            )
+                )
+            }
         } else {
             Column(
                 Modifier
@@ -498,8 +532,13 @@ fun NowPlayingScreen(state: AppState) {
                                 text = { Text(stringResource(R.string.visualizer_style)) },
                                 onClick = {
                                     moreMenuOpen = false
-                                    state.settings.visualizerStyle =
-                                        (state.settings.visualizerStyle + 1) % 3
+                                    val next = (state.settings.visualizerStyle + 1) % 6
+                                    state.settings.visualizerStyle = next
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(visualizerStyleName(next)),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
                                 },
                             )
                             DropdownMenuItem(
@@ -752,9 +791,11 @@ fun NowPlayingScreen(state: AppState) {
                             bands = state.visualizer.bands.value,
                             accent = accent,
                             showRing = state.settings.visualizerEnabled &&
-                                state.settings.visualizerStyle != 0,
+                                (state.settings.visualizerStyle == 1 ||
+                                    state.settings.visualizerStyle == 2),
                             showBars = state.settings.visualizerEnabled &&
-                                state.settings.visualizerStyle != 1,
+                                (state.settings.visualizerStyle == 0 ||
+                                    state.settings.visualizerStyle == 2),
                             gesturesEnabled = state.settings.gesturesEnabled,
                             circle = state.settings.coverShape == 1,
                             isPlaying = player.isPlaying,
@@ -768,36 +809,42 @@ fun NowPlayingScreen(state: AppState) {
 
                         2 -> VisualizerPage(
                             bands = state.visualizer.bands.value,
+                            waveform = state.visualizer.waveform.value,
                             accent = accent,
+                            style = state.settings.visualizerStyle,
+                            onFullscreen = { visualizerFullScreen = true },
                         )
 
-                        else -> Column(Modifier.fillMaxSize()) {
-                            val currentChord = state.audioFeatures.get(current.id)?.chords
-                                ?.lastOrNull { it.startMs <= player.positionMs }
-                                ?.name
-                            if (currentChord != null) {
-                                Text(
-                                    MusicTheory.transposeChord(
-                                        currentChord,
-                                        state.settings.pitchSemitones,
-                                    ),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = accent,
-                                    modifier = Modifier.padding(start = 16.dp),
+                        else -> Box(Modifier.fillMaxSize()) {
+                            LyricsBackground(backgroundUrl, accent)
+                            Column(Modifier.fillMaxSize()) {
+                                val currentChord = state.audioFeatures.get(current.id)?.chords
+                                    ?.lastOrNull { it.startMs <= player.positionMs }
+                                    ?.name
+                                if (currentChord != null) {
+                                    Text(
+                                        MusicTheory.transposeChord(
+                                            currentChord,
+                                            state.settings.pitchSemitones,
+                                        ),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = accent,
+                                        modifier = Modifier.padding(start = 16.dp),
+                                    )
+                                }
+                                LyricsView(
+                                    lyrics = lyrics,
+                                    positionMs = player.positionMs,
+                                    offsetMs = lyricsOffset,
+                                    fontScale = state.settings.lyricsFontScale,
+                                    fullScreen = false,
+                                    onExpand = { lyricsFullScreen = true },
+                                    onSeekLine = {},
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 12.dp),
                                 )
                             }
-                            LyricsView(
-                            lyrics = lyrics,
-                            positionMs = player.positionMs,
-                            offsetMs = lyricsOffset,
-                            fontScale = state.settings.lyricsFontScale,
-                            fullScreen = false,
-                            onExpand = { lyricsFullScreen = true },
-                            onSeekLine = {},
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 12.dp),
-                            )
                         }
                     }
                 }
@@ -1328,30 +1375,375 @@ private fun CoverPage(
 }
 
 @Composable
-private fun VisualizerPage(bands: FloatArray, accent: Color) {
-    Column(
+private fun VisualizerPage(
+    bands: FloatArray,
+    waveform: FloatArray,
+    accent: Color,
+    style: Int,
+    onFullscreen: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        VisualizerContent(
+            bands = bands,
+            waveform = waveform,
+            accent = accent,
+            style = style,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+        )
+        IconButton(
+            onClick = onFullscreen,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp),
+        ) {
+            Icon(
+                Icons.Default.Fullscreen,
+                contentDescription = stringResource(R.string.visualizer_fullscreen),
+            )
+        }
+    }
+}
+
+@Composable
+private fun VisualizerContent(
+    bands: FloatArray,
+    waveform: FloatArray,
+    accent: Color,
+    style: Int,
+    modifier: Modifier = Modifier,
+    fullScreen: Boolean = false,
+) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        when (style) {
+            0 -> SpectrumBars(
+                bands = bands,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (fullScreen) 200.dp else 120.dp),
+            )
+
+            1 -> SpectrumRing(
+                bands = bands,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .aspectRatio(1f),
+            )
+
+            3 -> WaveformGraph(
+                waveform = waveform,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (fullScreen) 260.dp else 160.dp),
+            )
+
+            4 -> MirroredSpectrum(
+                bands = bands,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (fullScreen) 360.dp else 200.dp),
+            )
+
+            5 -> ParticleField(
+                bands = bands,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+            )
+
+            else -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                SpectrumRing(
+                    bands = bands,
+                    accent = accent,
+                    modifier = Modifier
+                        .fillMaxWidth(0.75f)
+                        .aspectRatio(1f),
+                )
+                Spacer(Modifier.height(12.dp))
+                SpectrumBars(
+                    bands = bands,
+                    accent = accent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(if (fullScreen) 120.dp else 70.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenVisualizer(
+    bands: FloatArray,
+    waveform: FloatArray,
+    accent: Color,
+    style: Int,
+    title: String,
+    onClose: () -> Unit,
+    onTogglePlay: () -> Unit,
+) {
+    BackHandler { onClose() }
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        controller?.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller?.hide(WindowInsetsCompat.Type.systemBars())
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+    Box(
         Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            .background(Color.Black),
     ) {
-        SpectrumRing(
+        VisualizerContent(
             bands = bands,
+            waveform = waveform,
             accent = accent,
+            style = style,
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f),
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 56.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { onTogglePlay() })
+                },
+            fullScreen = true,
         )
-        Spacer(Modifier.height(24.dp))
-        SpectrumBars(
-            bands = bands,
-            accent = accent,
-            modifier = Modifier
+        Row(
+            Modifier
                 .fillMaxWidth()
-                .height(90.dp),
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.exit_fullscreen),
+                    tint = Color.White,
+                )
+            }
+            Text(
+                title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(48.dp))
+        }
+        Text(
+            stringResource(R.string.visualizer_tap_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.45f),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp),
         )
     }
+}
+
+@Composable
+private fun WaveformGraph(
+    waveform: FloatArray,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        if (waveform.isEmpty()) return@Canvas
+        val midY = size.height / 2f
+        val stepX = size.width / (waveform.size - 1).coerceAtLeast(1)
+        val path = Path()
+        waveform.forEachIndexed { index, value ->
+            val x = index * stepX
+            val y = midY - value * size.height * 0.45f
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawLine(
+            color = accent.copy(alpha = 0.25f),
+            start = Offset(0f, midY),
+            end = Offset(size.width, midY),
+            strokeWidth = 1f,
+        )
+        drawPath(
+            path = path,
+            color = accent,
+            style = Stroke(width = 3f, cap = StrokeCap.Round),
+        )
+    }
+}
+
+@Composable
+private fun MirroredSpectrum(
+    bands: FloatArray,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        if (bands.isEmpty()) return@Canvas
+        val midY = size.height / 2f
+        val gap = 2.dp.toPx()
+        val barWidth = (size.width - gap * (bands.size - 1)) / bands.size
+        bands.forEachIndexed { index, band ->
+            val magnitude = band.coerceIn(0f, 1f)
+            val height = (size.height * 0.44f * magnitude).coerceAtLeast(1f)
+            val x = index * (barWidth + gap)
+            drawRoundRect(
+                color = accent.copy(alpha = 0.25f + 0.75f * magnitude),
+                topLeft = Offset(x, midY - height),
+                size = Size(barWidth, height),
+                cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+            )
+            drawRoundRect(
+                color = accent.copy(alpha = 0.12f + 0.38f * magnitude),
+                topLeft = Offset(x, midY + gap),
+                size = Size(barWidth, height * 0.65f),
+                cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ParticleField(
+    bands: FloatArray,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    val seeds = remember {
+        val random = java.util.Random(42)
+        List(72) {
+            Triple(
+                random.nextFloat() * 2f * PI.toFloat(),
+                0.12f + random.nextFloat() * 0.62f,
+                it % 48,
+            )
+        }
+    }
+    Canvas(modifier) {
+        if (bands.isEmpty()) return@Canvas
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
+        val maxRadius = minOf(size.width, size.height) / 2f
+        seeds.forEach { (angle, base, band) ->
+            val magnitude = bands.getOrElse(band) { 0f }.coerceIn(0f, 1f)
+            val radius = (base + magnitude * 0.3f) * maxRadius
+            drawCircle(
+                color = accent.copy(alpha = 0.12f + 0.88f * magnitude),
+                radius = (1.5f + magnitude * 7f).dp.toPx(),
+                center = Offset(
+                    centerX + cos(angle) * radius,
+                    centerY + sin(angle) * radius,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsBackground(artUrl: String?, accent: Color) {
+    val context = LocalContext.current
+    val transition = rememberInfiniteTransition(label = "lyrics-background")
+    val scale by transition.animateFloat(
+        initialValue = 1.08f,
+        targetValue = 1.24f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(22_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "lyrics-background-scale",
+    )
+    val shiftX by transition.animateFloat(
+        initialValue = -14f,
+        targetValue = 14f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(16_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "lyrics-background-x",
+    )
+    val shiftY by transition.animateFloat(
+        initialValue = 10f,
+        targetValue = -10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(19_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "lyrics-background-y",
+    )
+    Box(Modifier.fillMaxSize().clipToBounds()) {
+        if (artUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(artUrl)
+                    .size(128, 128)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = shiftX.dp.toPx()
+                        translationY = shiftY.dp.toPx()
+                    }
+                    .blur(30.dp)
+                    .alpha(0.68f),
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.15f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                        ),
+                    ),
+                ),
+        )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        listOf(accent.copy(alpha = 0.22f), Color.Transparent),
+                    ),
+                ),
+        )
+    }
+}
+
+private fun android.content.Context.findActivity(): Activity? {
+    var context: android.content.Context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
+
+private fun visualizerStyleName(style: Int): Int = when (style) {
+    0 -> R.string.visualizer_style_bars
+    1 -> R.string.visualizer_style_ring
+    2 -> R.string.visualizer_style_both
+    3 -> R.string.visualizer_style_wave
+    4 -> R.string.visualizer_style_mirror
+    else -> R.string.visualizer_style_particles
 }
 
 @Composable
