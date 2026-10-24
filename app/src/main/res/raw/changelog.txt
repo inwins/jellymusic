@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.26.1
+- Vinyl cover now rotates continuously (also while paused) and spins faster
+
 2.26.0
 - Now Playing visuals: multi-colour palette gradient from the cover, coloured glow behind the artwork, beat-synced breathing and a frosted-glass control panel
 

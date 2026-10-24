@@ -1238,14 +1238,16 @@ private fun CoverPage(
                     beatPulse.animateTo(1f, tween((period * 5 / 6).coerceAtLeast(120)))
                 }
             }
-            LaunchedEffect(isPlaying, circle) {
-                if (circle && isPlaying) {
-                    while (true) {
-                        rotation.animateTo(
-                            rotation.value + 360f,
-                            tween(24_000, easing = LinearEasing),
-                        )
-                    }
+            LaunchedEffect(circle) {
+                if (!circle) {
+                    rotation.snapTo(0f)
+                    return@LaunchedEffect
+                }
+                while (true) {
+                    rotation.animateTo(
+                        rotation.value + 360f,
+                        tween(12_000, easing = LinearEasing),
+                    )
                 }
             }
             Box(
