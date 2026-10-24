@@ -145,6 +145,11 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
     }
 }
 
+private data class ArtistContent(
+    val albums: List<BaseItem>,
+    val songs: List<BaseItem>,
+)
+
 @Composable
 fun ArtistScreen(state: AppState, screen: Screen.Artist) {
     val artistItem = remember(screen.id) {
@@ -168,8 +173,21 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
             }
         }
         Loaded(key = "artist-${screen.id}", load = {
-            state.requireApi().getArtistAlbums(screen.id)
-        }) { albums ->
+            if (state.isOffline) {
+                ArtistContent(
+                    albums = emptyList(),
+                    songs = state.offlineArtistTracks(screen.name),
+                )
+            } else {
+                val api = state.requireApi()
+                ArtistContent(
+                    albums = api.getArtistAlbums(screen.id),
+                    songs = api.getArtistSongs(screen.id, 100),
+                )
+            }
+        }) { content ->
+            val albums = content.albums
+            val songs = content.songs
             var similarArtists by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
             LaunchedEffect(screen.id) {
                 similarArtists = runCatching {
@@ -220,6 +238,40 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                                 }
                             }
                         }
+                    }
+                }
+                if (songs.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column {
+                            SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
+                            songs.take(20).forEachIndexed { index, song ->
+                                TrackRow(
+                                    item = song,
+                                    index = index + 1,
+                                    artworkUrl = state.artworkUrl(song, 120),
+                                    onClick = { state.player.play(songs, index) },
+                                    showArtwork = true,
+                                    isCurrent = state.player.current?.id == song.id,
+                                    favorite = state.favorites.isFavorite(song),
+                                    onToggleFavorite = { state.favorites.toggle(song) },
+                                    downloaded = state.downloads.downloadedIds[song.id] == true,
+                                    downloading = state.downloads.progress[song.id],
+                                    downloadError = state.downloads.errors[song.id] != null,
+                                    cached = state.streamCache.isCached(song.id),
+                                    onDownload = {
+                                        state.api?.let { api ->
+                                            state.downloads.download(api, song)
+                                        }
+                                    },
+                                    onLongClick = { state.trackMenu = song },
+                                )
+                            }
+                        }
+                    }
+                }
+                if (albums.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SectionTitle(stringResource(R.string.tab_albums))
                     }
                 }
                 items(albums, key = { it.id }) { album ->

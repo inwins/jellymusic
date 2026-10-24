@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.26.2
+- Artist page now shows top songs alongside albums
+- Cover-shape, pitch and visualizer-style settings apply immediately
+
 2.26.1
 - Vinyl cover now rotates continuously (also while paused) and spins faster
 

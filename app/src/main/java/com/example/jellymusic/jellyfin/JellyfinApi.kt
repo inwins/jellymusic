@@ -324,6 +324,18 @@ class JellyfinApi(
         ),
     )
 
+    suspend fun getArtistSongs(artistId: String, limit: Int = 200): List<BaseItem> = items(
+        "/Users/$userId/Items",
+        mapOf(
+            "ArtistIds" to artistId,
+            "Recursive" to "true",
+            "IncludeItemTypes" to "Audio",
+            "SortBy" to "PlayCount,SortName",
+            "SortOrder" to "Descending,Ascending",
+            "Limit" to limit.toString(),
+        ),
+    )
+
     suspend fun getPlaylists(): List<BaseItem> = items(
         "/Users/$userId/Items",
         mapOf(

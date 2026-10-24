@@ -206,17 +206,32 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_ALBUM_FAV, false)
         set(value) = prefs.edit().putBoolean(KEY_ALBUM_FAV, value).apply()
 
+    private var coverShapeState by mutableStateOf(prefs.getInt(KEY_COVER_SHAPE, 0))
+
     var coverShape: Int
-        get() = prefs.getInt(KEY_COVER_SHAPE, 0)
-        set(value) = prefs.edit().putInt(KEY_COVER_SHAPE, value).apply()
+        get() = coverShapeState
+        set(value) {
+            coverShapeState = value
+            prefs.edit().putInt(KEY_COVER_SHAPE, value).apply()
+        }
+
+    private var customBackgroundState by mutableStateOf(prefs.getString(KEY_BACKGROUND, null))
 
     var customBackgroundUri: String?
-        get() = prefs.getString(KEY_BACKGROUND, null)
-        set(value) = prefs.edit().putString(KEY_BACKGROUND, value).apply()
+        get() = customBackgroundState
+        set(value) {
+            customBackgroundState = value
+            prefs.edit().putString(KEY_BACKGROUND, value).apply()
+        }
+
+    private var pitchSemitonesState by mutableStateOf(prefs.getInt(KEY_PITCH, 0))
 
     var pitchSemitones: Int
-        get() = prefs.getInt(KEY_PITCH, 0)
-        set(value) = prefs.edit().putInt(KEY_PITCH, value).apply()
+        get() = pitchSemitonesState
+        set(value) {
+            pitchSemitonesState = value
+            prefs.edit().putInt(KEY_PITCH, value).apply()
+        }
 
     var allSongsSort: String
         get() = prefs.getString(KEY_ALL_SORT, "NAME") ?: "NAME"
@@ -242,9 +257,14 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_ARTIST_FAV, false)
         set(value) = prefs.edit().putBoolean(KEY_ARTIST_FAV, value).apply()
 
+    private var visualizerStyleState by mutableStateOf(prefs.getInt(KEY_VISUALIZER_STYLE, 2))
+
     var visualizerStyle: Int
-        get() = prefs.getInt(KEY_VISUALIZER_STYLE, 2)
-        set(value) = prefs.edit().putInt(KEY_VISUALIZER_STYLE, value).apply()
+        get() = visualizerStyleState
+        set(value) {
+            visualizerStyleState = value
+            prefs.edit().putInt(KEY_VISUALIZER_STYLE, value).apply()
+        }
 
     private fun loadThemeMode(): ThemeMode = runCatching {
         ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)!!)
