@@ -205,6 +205,10 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
             val albums = content.albums
             val songs = content.songs
             var similarArtists by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
+            var showAllSongs by remember(screen.id) { mutableStateOf(false) }
+            val visibleSongs = remember(songs, showAllSongs) {
+                if (showAllSongs) songs else songs.take(50)
+            }
             LaunchedEffect(screen.id) {
                 similarArtists = runCatching {
                     state.requireApi().getSimilarArtists(screen.id, 20)
@@ -258,12 +262,12 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                     item {
                         SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
                     }
-                    itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
+                    itemsIndexed(visibleSongs, key = { _, song -> song.id }) { index, song ->
                         TrackRow(
                             item = song,
                             index = index + 1,
                             artworkUrl = state.artworkUrl(song, 120),
-                            onClick = { state.player.play(songs, index) },
+                            onClick = { state.player.play(visibleSongs, index) },
                             showArtwork = true,
                             isCurrent = state.player.current?.id == song.id,
                             favorite = state.favorites.isFavorite(song),
@@ -279,6 +283,13 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                             },
                             onLongClick = { state.trackMenu = song },
                         )
+                    }
+                    if (!showAllSongs && songs.size > visibleSongs.size) {
+                        item {
+                            TextButton(onClick = { showAllSongs = true }) {
+                                Text(stringResource(R.string.show_all_count, songs.size))
+                            }
+                        }
                     }
                 }
                 if (albums.isNotEmpty()) {

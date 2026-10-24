@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.26.4
+- Artist page shows the first 50 songs by default, with a "Show all" button to expand
+
 2.26.3
 - Artist page now lists all songs by the artist (sorted by album/track), with albums below
 

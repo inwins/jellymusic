@@ -45,6 +45,7 @@
     <string name="favorite_songs">收藏歌曲</string>
     <string name="no_playlists">暂无播放列表</string>
     <string name="related_artists">相关艺术家</string>
+    <string name="show_all_count">显示全部 %1$d 首</string>
     <string name="songs">歌曲</string>
     <string name="artist">艺术家</string>
     <string name="no_downloads_hint">暂无下载。在歌曲或专辑页点下载按钮即可离线播放。</string>

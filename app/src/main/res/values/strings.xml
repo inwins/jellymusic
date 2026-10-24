@@ -45,6 +45,7 @@
     <string name="favorite_songs">Favorite songs</string>
     <string name="no_playlists">No playlists</string>
     <string name="related_artists">Related artists</string>
+    <string name="show_all_count">Show all %1$d songs</string>
     <string name="songs">Songs</string>
     <string name="artist">Artist</string>
     <string name="no_downloads_hint">No downloads yet. Tap the download button on a song or album to play offline.</string>
