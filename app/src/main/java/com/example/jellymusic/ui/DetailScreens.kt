@@ -1,6 +1,7 @@
 package com.example.jellymusic.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -180,9 +181,24 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 )
             } else {
                 val api = state.requireApi()
+                val allSongs = mutableListOf<BaseItem>()
+                var startIndex = 0
+                while (allSongs.size < 5000) {
+                    val page = api.getArtistSongs(screen.id, startIndex, 200)
+                    allSongs.addAll(page)
+                    if (page.size < 200) break
+                    startIndex += page.size
+                }
                 ArtistContent(
                     albums = api.getArtistAlbums(screen.id),
-                    songs = api.getArtistSongs(screen.id, 100),
+                    songs = allSongs.sortedWith(
+                        compareBy(
+                            { it.album ?: "" },
+                            { it.discNumber ?: 1 },
+                            { it.trackNumber ?: 0 },
+                            { it.name },
+                        ),
+                    ),
                 )
             }
         }) { content ->
@@ -194,15 +210,13 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                     state.requireApi().getSimilarArtists(screen.id, 20)
                 }.getOrDefault(emptyList())
             }
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+            LazyColumn(
                 contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 if (similarArtists.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                    item {
                         Column {
                             SectionTitle(stringResource(R.string.related_artists))
                             LazyRow(
@@ -241,46 +255,62 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                     }
                 }
                 if (songs.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Column {
-                            SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
-                            songs.take(20).forEachIndexed { index, song ->
-                                TrackRow(
-                                    item = song,
-                                    index = index + 1,
-                                    artworkUrl = state.artworkUrl(song, 120),
-                                    onClick = { state.player.play(songs, index) },
-                                    showArtwork = true,
-                                    isCurrent = state.player.current?.id == song.id,
-                                    favorite = state.favorites.isFavorite(song),
-                                    onToggleFavorite = { state.favorites.toggle(song) },
-                                    downloaded = state.downloads.downloadedIds[song.id] == true,
-                                    downloading = state.downloads.progress[song.id],
-                                    downloadError = state.downloads.errors[song.id] != null,
-                                    cached = state.streamCache.isCached(song.id),
-                                    onDownload = {
-                                        state.api?.let { api ->
-                                            state.downloads.download(api, song)
-                                        }
-                                    },
-                                    onLongClick = { state.trackMenu = song },
-                                )
-                            }
-                        }
+                    item {
+                        SectionTitle(stringResource(R.string.songs) + " · " + songs.size)
+                    }
+                    itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
+                        TrackRow(
+                            item = song,
+                            index = index + 1,
+                            artworkUrl = state.artworkUrl(song, 120),
+                            onClick = { state.player.play(songs, index) },
+                            showArtwork = true,
+                            isCurrent = state.player.current?.id == song.id,
+                            favorite = state.favorites.isFavorite(song),
+                            onToggleFavorite = { state.favorites.toggle(song) },
+                            downloaded = state.downloads.downloadedIds[song.id] == true,
+                            downloading = state.downloads.progress[song.id],
+                            downloadError = state.downloads.errors[song.id] != null,
+                            cached = state.streamCache.isCached(song.id),
+                            onDownload = {
+                                state.api?.let { api ->
+                                    state.downloads.download(api, song)
+                                }
+                            },
+                            onLongClick = { state.trackMenu = song },
+                        )
                     }
                 }
                 if (albums.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                    item {
                         SectionTitle(stringResource(R.string.tab_albums))
                     }
-                }
-                items(albums, key = { it.id }) { album ->
-                    CardItem(
-                        item = album,
-                        artworkUrl = state.artworkUrl(album, 400),
-                        subtitle = album.albumArtist,
-                        onClick = { state.navigate(Screen.Album(album.id, album.name)) },
-                    )
+                    albums.chunked(2).forEach { row ->
+                        item {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { album ->
+                                    Box(Modifier.weight(1f)) {
+                                        CardItem(
+                                            item = album,
+                                            artworkUrl = state.artworkUrl(album, 400),
+                                            subtitle = album.albumArtist,
+                                            onClick = {
+                                                state.navigate(
+                                                    Screen.Album(album.id, album.name),
+                                                )
+                                            },
+                                        )
+                                    }
+                                }
+                                if (row.size == 1) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.26.3
+- Artist page now lists all songs by the artist (sorted by album/track), with albums below
+
 2.26.2
 - Artist page now shows top songs alongside albums
 - Cover-shape, pitch and visualizer-style settings apply immediately
