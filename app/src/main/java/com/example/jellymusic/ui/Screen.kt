@@ -19,6 +19,7 @@ sealed class Screen {
     data object Daily : Screen()
     data object Practice : Screen()
     data object Theory : Screen()
+    data object VocalTraining : Screen()
     data object Tuner : Screen()
     data object Metronome : Screen()
     data object DrumMachine : Screen()

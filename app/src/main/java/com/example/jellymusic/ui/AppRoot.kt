@@ -69,6 +69,7 @@ fun MainScaffold(state: AppState) {
                     is Screen.OfflineArtist -> OfflineArtistScreen(state, current)
                     Screen.Practice -> PracticeScreen(state)
                     Screen.Theory -> TheoryScreen(state)
+                    Screen.VocalTraining -> VocalTrainingScreen(state)
                     Screen.EarTraining -> EarTrainingScreen(state)
                     Screen.Tuner -> TunerScreen(state)
                     Screen.ChordLibrary -> ChordLibraryScreen(state)

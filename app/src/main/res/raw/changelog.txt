@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.25.0
+- Vocal training: range test, sustain/breath, sing-back, guided warm-up and rhythm tap
+- Fix: the tuner read the microphone on the main thread, which could freeze the app (ANR)
+
 2.24.0
 - Multi-instrument tuner: guitar (standard/Drop D), ukulele, bass and violin, with per-string guidance and reference tones
 - Chord library with guitar/ukulele fretboard and piano diagrams, tap to play

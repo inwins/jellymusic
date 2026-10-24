@@ -42,7 +42,9 @@ import com.example.jellymusic.util.Instruments
 import com.example.jellymusic.util.MusicTheory
 import com.example.jellymusic.util.PitchDetector
 import com.example.jellymusic.util.TonePlayer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.roundToInt
@@ -84,18 +86,20 @@ fun TunerScreen(state: AppState) {
             return@LaunchedEffect
         }
         record.startRecording()
-        val buffer = ShortArray(2048)
-        while (isActive && running) {
-            val read = record.read(buffer, 0, buffer.size)
-            if (read > 0) {
-                val pitch = PitchDetector.detect(buffer, sampleRate)
-                if (pitch > 0f) {
-                    frequency = pitch
-                    val midi = 69.0 + 12.0 * (ln(pitch / 440f) / ln(2.0))
-                    detectedMidi = midi.toFloat()
-                    val rounded = midi.roundToInt()
-                    note = MusicTheory.noteName(rounded)
-                    cents = ((midi - rounded) * 100).roundToInt()
+        withContext(Dispatchers.IO) {
+            val buffer = ShortArray(2048)
+            while (isActive && running) {
+                val read = record.read(buffer, 0, buffer.size)
+                if (read > 0) {
+                    val pitch = PitchDetector.detect(buffer, sampleRate)
+                    if (pitch > 0f) {
+                        frequency = pitch
+                        val midi = 69.0 + 12.0 * (ln(pitch / 440f) / ln(2.0))
+                        detectedMidi = midi.toFloat()
+                        val rounded = midi.roundToInt()
+                        note = MusicTheory.noteName(rounded)
+                        cents = ((midi - rounded) * 100).roundToInt()
+                    }
                 }
             }
         }
