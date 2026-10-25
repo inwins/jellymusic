@@ -8,7 +8,35 @@ internal val ALLOWED_DOWNLOAD_EXTENSIONS = setOf(
 
 internal const val STALE_PART_AGE_MS = 5 * 60 * 1000L
 
+private const val MAX_READABLE_BASE_LENGTH = 60
+
+private val INVALID_FILE_CHARS = Regex("[\\\\/:*?\"<>|\\u0000-\\u001F]")
+private val WHITESPACE = Regex("\\s+")
+
+internal fun sanitizeFileNamePart(raw: String): String =
+    raw.replace(INVALID_FILE_CHARS, "_").replace(WHITESPACE, " ").trim()
+
 internal fun downloadFileName(item: BaseItem): String {
+    val ext = item.container
+        ?.substringBefore(',')
+        ?.substringBefore(' ')
+        ?.lowercase()
+        ?.takeIf { it in ALLOWED_DOWNLOAD_EXTENSIONS }
+        ?: "audio"
+    val artist = item.primaryArtist?.let { sanitizeFileNamePart(it) }?.takeIf { it.isNotEmpty() }
+    val title = sanitizeFileNamePart(item.name).ifEmpty { "Track" }
+    val base = buildString {
+        if (artist != null) append(artist).append(" - ")
+        append(title)
+    }
+        .take(MAX_READABLE_BASE_LENGTH)
+        .trim()
+        .trimEnd('.', ' ')
+        .ifBlank { "Track" }
+    return "$base [${item.id}].$ext"
+}
+
+internal fun legacyDownloadFileName(item: BaseItem): String {
     val ext = item.container
         ?.substringBefore(',')
         ?.substringBefore(' ')

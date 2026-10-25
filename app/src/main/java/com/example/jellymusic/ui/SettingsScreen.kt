@@ -133,6 +133,37 @@ fun SettingsScreen(state: AppState) {
             }
 
             item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.offline_mode),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(R.string.offline_mode_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.manualOffline,
+                        onCheckedChange = { enabled ->
+                            state.settings.manualOffline = enabled
+                            if (!enabled) {
+                                state.refreshSignal.value += 1
+                                scope.launch { state.syncOfflineChanges() }
+                            }
+                        },
+                    )
+                }
+            }
+
+            item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 SettingsSectionTitle(stringResource(R.string.appearance))
             }
@@ -472,37 +503,6 @@ fun SettingsScreen(state: AppState) {
             }
 
             item {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.offline_mode),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            stringResource(R.string.offline_mode_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = state.settings.manualOffline,
-                        onCheckedChange = { enabled ->
-                            state.settings.manualOffline = enabled
-                            if (!enabled) {
-                                state.refreshSignal.value += 1
-                                scope.launch { state.syncOfflineChanges() }
-                            }
-                        },
-                    )
-                }
-            }
-
-            item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 SettingsSectionTitle(stringResource(R.string.auto_download))
             }
@@ -678,8 +678,28 @@ fun SettingsScreen(state: AppState) {
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 ) {
+                    TextButton(
+                        onClick = {
+                            state.downloads.renameDownloads { renamed, failed ->
+                                Toast.makeText(
+                                    context,
+                                    context.getString(
+                                        R.string.rename_downloads_result,
+                                        renamed,
+                                        failed,
+                                    ),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                                tick++
+                            }
+                        },
+                        enabled = state.downloads.downloadedItems().isNotEmpty() &&
+                            !state.downloads.isMigrating,
+                    ) {
+                        Text(stringResource(R.string.rename_downloads))
+                    }
                     TextButton(
                         onClick = {
                             val removed = state.downloads.verifyDownloads()
@@ -962,6 +982,8 @@ fun SettingsScreen(state: AppState) {
                     )
                 }
             }
+
+
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
             }

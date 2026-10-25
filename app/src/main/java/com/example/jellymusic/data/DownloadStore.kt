@@ -272,6 +272,46 @@ class DownloadStore(
         }
     }
 
+    fun renameDownloads(onFinished: (renamed: Int, failed: Int) -> Unit = { _, _ -> }) {
+        scope.launch {
+            var renamed = 0
+            var failed = 0
+            withContext(Dispatchers.IO) {
+                records.values.toList().forEach { record ->
+                    try {
+                        val current = Uri.parse(record.uri)
+                        val desired = downloadFileName(record.item)
+                        if (displayName(current) == desired) return@forEach
+                        val newUri = if (current.scheme == "file") {
+                            val file = File(current.path ?: throw IllegalStateException())
+                            val target = File(file.parentFile, desired)
+                            if (target.exists() && target != file) target.delete()
+                            if (!file.renameTo(target)) throw IllegalStateException()
+                            Uri.fromFile(target)
+                        } else {
+                            DocumentsContract.renameDocument(
+                                context.contentResolver,
+                                current,
+                                desired,
+                            ) ?: throw IllegalStateException()
+                        }
+                        records[record.item.id] = DownloadRecord(record.item, newUri.toString())
+                        renamed++
+                    } catch (_: Exception) {
+                        failed++
+                    }
+                }
+                if (renamed > 0) saveIndex()
+            }
+            onFinished(renamed, failed)
+        }
+    }
+
+    private fun displayName(uri: Uri): String? = when (uri.scheme) {
+        "file" -> uri.path?.let { File(it).name }
+        else -> runCatching { DocumentFile.fromSingleUri(context, uri)?.name }.getOrNull()
+    }
+
     fun delete(item: BaseItem) {
         val record = records.remove(item.id) ?: return
         deleteUri(Uri.parse(record.uri))
@@ -451,7 +491,11 @@ class DownloadStore(
                 val item = itemFromJson(json)
                 val rawUri = json.optString("uri").ifBlank {
                     // Backward compatibility with the old directory-only schema.
-                    Uri.fromFile(File(privateDir, downloadFileName(item))).toString()
+                    val candidates = listOf(
+                        downloadFileName(item),
+                        legacyDownloadFileName(item),
+                    ).map { Uri.fromFile(File(privateDir, it)) }
+                    (candidates.firstOrNull { exists(it) } ?: candidates.last()).toString()
                 }
                 val uri = Uri.parse(rawUri)
                 if (exists(uri)) {

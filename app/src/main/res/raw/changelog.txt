@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.26.8
+- Downloads are now saved as "Artist - Title [ID].ext", so files are easy to recognize in the Music folder
+- New "Rename downloads" action in Settings → Downloads to rename existing ID-named files
+- The offline mode switch now sits at the top of Settings, right below the server address
+
 2.26.7
 - Full-screen visualizer with the system bars hidden; tap the screen to play or pause
 - Six visualizer styles: bars, ring, ring + bars, waveform, mirrored spectrum and particles
