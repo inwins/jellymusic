@@ -55,6 +55,7 @@
     <string name="no_downloaded_songs">No downloaded songs</string>
     <string name="offline_showing_downloads">Cannot reach server, showing downloaded songs</string>
 
+    <string name="seek_bar">Progress</string>
     <string name="selected_count">%1$d selected</string>
     <string name="multi_select">Multi-select</string>
     <string name="download_folder">Download folder</string>

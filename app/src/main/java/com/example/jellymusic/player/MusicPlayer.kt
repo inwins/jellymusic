@@ -141,6 +141,8 @@ class MusicPlayer(
         private set
     var positionMs by mutableLongStateOf(0L)
         private set
+    var bufferedMs by mutableLongStateOf(0L)
+        private set
     var durationMs by mutableLongStateOf(0L)
         private set
     var playMode by mutableStateOf(PlayMode.SEQUENTIAL)
@@ -373,6 +375,7 @@ class MusicPlayer(
         current = null
         playIndex = -1
         positionMs = 0
+        bufferedMs = 0
         durationMs = 0
         isPlaying = false
         isBuffering = false
@@ -698,6 +701,11 @@ class MusicPlayer(
             while (isActive) {
                 positionMs = exo.currentPosition.coerceAtLeast(0L)
                 durationMs = knownDuration()
+                bufferedMs = if (durationMs > 0L) {
+                    exo.bufferedPosition.coerceIn(0L, durationMs)
+                } else {
+                    exo.bufferedPosition.coerceAtLeast(0L)
+                }
                 if (exo.isPlaying) {
                     tickCount++
                     if (tickCount % 20 == 0) {

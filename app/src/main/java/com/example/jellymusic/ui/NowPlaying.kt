@@ -176,12 +176,30 @@ fun MiniPlayerBar(state: AppState) {
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Column {
-            LinearProgressIndicator(
-                progress = fraction,
-                modifier = Modifier
+            val buffered = if (player.durationMs > 0L) {
+                (player.bufferedMs.toFloat() / player.durationMs).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            Box(
+                Modifier
                     .fillMaxWidth()
-                    .height(3.dp),
-            )
+                    .height(3.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(buffered)
+                        .height(3.dp)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)),
+                )
+                Box(
+                    Modifier
+                        .fillMaxWidth(fraction)
+                        .height(3.dp)
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+            }
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -242,7 +260,6 @@ fun NowPlayingScreen(state: AppState) {
 
     var lyricsFullScreen by rememberSaveable { mutableStateOf(false) }
     var visualizerFullScreen by rememberSaveable { mutableStateOf(false) }
-    var dragPosition by remember { mutableStateOf<Float?>(null) }
     var showQueue by remember { mutableStateOf(false) }
     var queueQuery by remember { mutableStateOf("") }
     var metronomeOn by remember { mutableStateOf(false) }
@@ -271,7 +288,6 @@ fun NowPlayingScreen(state: AppState) {
         }
     }
 
-    val sliderPosition = dragPosition ?: player.positionMs.toFloat()
     val duration = player.durationMs.coerceAtLeast(1L)
     val downloaded = state.downloads.isDownloaded(current.id)
     val downloadProgress = state.downloads.progress[current.id]
@@ -919,29 +935,14 @@ fun NowPlayingScreen(state: AppState) {
                             )
                         }
                     }
-                    Slider(
-                        value = sliderPosition.coerceIn(0f, duration.toFloat()),
-                        onValueChange = { dragPosition = it },
-                        valueRange = 0f..duration.toFloat(),
-                        onValueChangeFinished = {
-                            player.seekTo((dragPosition ?: 0f).toLong())
-                            dragPosition = null
-                        },
+                    SeekBar(
+                        positionMs = player.positionMs,
+                        durationMs = player.durationMs,
+                        bufferedMs = player.bufferedMs,
+                        accent = accent,
+                        onSeek = { player.seekTo(it) },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Row(Modifier.fillMaxWidth()) {
-                        Text(
-                            formatDuration(sliderPosition.toLong()),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            formatDuration(duration),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
 
                     val sleepEnd = player.sleepTimerEndsAt
                     val sleepRemaining = sleepEnd?.let { (it - nowMs).coerceAtLeast(0L) }
