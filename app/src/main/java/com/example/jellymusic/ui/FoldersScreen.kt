@@ -16,6 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MusicNote
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +37,18 @@ import com.example.jellymusic.jellyfin.BaseItem
 
 @Composable
 fun FoldersScreen(state: AppState) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    fun downloadFolder(folderId: String) {
+        scope.launch {
+            val count = state.queueFolderDownload(folderId)
+            Toast.makeText(
+                context,
+                context.getString(R.string.download_folder_queued, count),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         TopBar(stringResource(R.string.folders), onBack = { state.back() })
 
@@ -50,6 +68,7 @@ fun FoldersScreen(state: AppState) {
                             state = state,
                             item = view,
                             onClick = { state.navigate(Screen.Folder(view.id, view.name)) },
+                            onDownload = { downloadFolder(view.id) },
                         )
                     }
                 }
@@ -60,8 +79,31 @@ fun FoldersScreen(state: AppState) {
 
 @Composable
 fun FolderScreen(state: AppState, screen: Screen.Folder) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    fun downloadFolder(folderId: String) {
+        scope.launch {
+            val count = state.queueFolderDownload(folderId)
+            Toast.makeText(
+                context,
+                context.getString(R.string.download_folder_queued, count),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
     Column(Modifier.fillMaxSize()) {
-        TopBar(screen.name, onBack = { state.back() })
+        TopBar(
+            screen.name,
+            onBack = { state.back() },
+            actions = {
+                IconButton(onClick = { downloadFolder(screen.id) }) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = stringResource(R.string.download_folder),
+                    )
+                }
+            },
+        )
 
         if (state.isOffline) {
             EmptyHint(stringResource(R.string.offline_hint))
@@ -92,6 +134,13 @@ fun FolderScreen(state: AppState, screen: Screen.Folder) {
                                     state.navigate(Screen.Folder(item.id, item.name))
                                 }
                             },
+                            onDownload = {
+                                if (item.type == "Audio") {
+                                    state.api?.let { state.downloads.download(it, item) }
+                                } else {
+                                    downloadFolder(item.id)
+                                }
+                            },
                         )
                     }
                 }
@@ -106,6 +155,7 @@ private fun FolderRow(
     item: BaseItem,
     showArtwork: Boolean = false,
     onClick: () -> Unit,
+    onDownload: (() -> Unit)? = null,
 ) {
     Row(
         Modifier
@@ -136,6 +186,16 @@ private fun FolderRow(
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
+        if (onDownload != null) {
+            IconButton(onClick = onDownload) {
+                Icon(
+                    Icons.Default.Download,
+                    contentDescription = stringResource(R.string.download),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
         Icon(
             Icons.Default.ChevronRight,
             contentDescription = null,

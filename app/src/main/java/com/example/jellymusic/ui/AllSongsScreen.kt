@@ -81,9 +81,7 @@ fun AllSongsScreen(state: AppState) {
     var favoritesOnly by remember { mutableStateOf(state.settings.allSongsFavoritesOnly) }
     var minRating by remember { mutableIntStateOf(0) }
     var sortMenu by remember { mutableStateOf(false) }
-    var selecting by remember { mutableStateOf(false) }
     var didScroll by remember { mutableStateOf(false) }
-    val selected = remember { mutableStateMapOf<String, BaseItem>() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -163,6 +161,7 @@ fun AllSongsScreen(state: AppState) {
             items.filter { state.ratings.rating(it.id) >= minRating }
         }
     }
+    RegisterSelectableItems(visible)
     val sections = remember(visible, sort) {
         val indexed = visible.withIndex().toList()
         if (sort == AllSongsSort.RECENT) {
@@ -216,24 +215,22 @@ fun AllSongsScreen(state: AppState) {
         TopBar(
             stringResource(R.string.all_songs),
             onBack = {
-                if (selecting) {
-                    selecting = false
-                    selected.clear()
+                if (state.selection.selecting) {
+                    state.selection.clear()
                 } else {
                     state.back()
                 }
             },
             actions = {
                 IconButton(onClick = {
-                    if (selecting) {
-                        selecting = false
-                        selected.clear()
+                    if (state.selection.selecting) {
+                        state.selection.clear()
                     } else {
-                        selecting = true
+                        state.selection.begin()
                     }
                 }) {
                     Icon(
-                        if (selecting) Icons.Default.Close else Icons.Default.Checklist,
+                        if (state.selection.selecting) Icons.Default.Close else Icons.Default.Checklist,
                         contentDescription = stringResource(R.string.select),
                     )
                 }
@@ -364,15 +361,6 @@ fun AllSongsScreen(state: AppState) {
                                     state.api?.let { api -> state.downloads.download(api, item) }
                                 },
                                 onLongClick = { state.trackMenu = item },
-                                selectable = selecting,
-                                selected = selected.containsKey(id),
-                                onSelect = {
-                                    if (selected.containsKey(id)) {
-                                        selected.remove(id)
-                                    } else {
-                                        selected[id] = item
-                                    }
-                                },
                             )
                         }
                     }
@@ -417,20 +405,6 @@ fun AllSongsScreen(state: AppState) {
             }
         }
 
-        if (selecting) {
-            SelectionBar(
-                allItems = visible,
-                selected = selected,
-                onSelectAll = { visible.forEach { selected[it.id] = it } },
-                onQueue = { selected.values.forEach { state.player.addToQueue(it) } },
-                onPlaylist = { state.addToPlaylistBatch = selected.values.toList() },
-                onDownload = {
-                    state.api?.let { api ->
-                        selected.values.forEach { state.downloads.download(api, it) }
-                    }
-                },
-            )
-        }
     }
 }
 
@@ -461,39 +435,6 @@ private fun sortClient(
         },
     )
     return if (descending) sorted.reversed() else sorted
-}
-
-@Composable
-private fun SelectionBar(
-    allItems: List<BaseItem>,
-    selected: Map<String, BaseItem>,
-    onSelectAll: () -> Unit,
-    onQueue: () -> Unit,
-    onPlaylist: () -> Unit,
-    onDownload: () -> Unit,
-) {
-    Surface(tonalElevation = 3.dp) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onSelectAll) {
-                Text(stringResource(R.string.select_all))
-            }
-            TextButton(onClick = onQueue, enabled = selected.isNotEmpty()) {
-                Text(stringResource(R.string.add_to_queue))
-            }
-            TextButton(onClick = onPlaylist, enabled = selected.isNotEmpty()) {
-                Text(stringResource(R.string.add_to_playlist))
-            }
-            TextButton(onClick = onDownload, enabled = selected.isNotEmpty()) {
-                Text(stringResource(R.string.download))
-            }
-        }
-    }
 }
 
 private const val PAGE_SIZE = 100

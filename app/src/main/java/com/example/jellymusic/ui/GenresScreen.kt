@@ -89,6 +89,7 @@ fun GenreSongsScreen(state: AppState, screen: Screen.GenreSongs) {
             if (songs.isEmpty()) {
                 EmptyHint(stringResource(R.string.search_no_results))
             } else {
+                RegisterSelectableItems(songs)
                 LazyColumn(Modifier.fillMaxSize()) {
                     item {
                         DetailHeader(

@@ -1006,6 +1006,7 @@ fun DownloadsTab(state: AppState) {
     val downloadedMap = state.downloads.downloadedIds
     val revision = state.streamCache.revision.value
     val downloaded = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
+    RegisterSelectableItems(downloaded)
     val cached = remember(revision, downloadedMap.toMap()) {
         state.streamCache.cachedItems().filter { !state.downloads.isDownloaded(it.id) }
     }
@@ -1218,7 +1219,7 @@ fun DownloadsTab(state: AppState) {
                         TextButton(
                             onClick = {
                                 state.api?.let { api ->
-                                    cached.forEach { state.downloads.download(api, it) }
+                                    state.downloads.downloadAll(api, cached)
                                 }
                             },
                         ) {

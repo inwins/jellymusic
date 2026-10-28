@@ -19,6 +19,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.example.jellymusic.AppState
@@ -38,12 +40,18 @@ fun MainScaffold(state: AppState) {
     BackHandler(enabled = state.backStack.size > 1) {
         state.back()
     }
+    BackHandler(enabled = state.selection.selecting) {
+        state.selection.clear()
+    }
 
     val current = state.backStack.last()
+    LaunchedEffect(current) { state.selection.clear() }
+    LaunchedEffect(state.homeTab) { state.selection.clear() }
     val player = state.player
     val showMiniPlayer = current != Screen.NowPlaying && player.current != null
 
     Surface(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalSelection provides state.selection) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -85,12 +93,16 @@ fun MainScaffold(state: AppState) {
                     Screen.Changelog -> ChangelogScreen(state)
                 }
             }
+            if (state.selection.selecting) {
+                SelectionBar(state)
+            }
             if (showMiniPlayer) {
                 MiniPlayerBar(state)
             }
             if (current == Screen.Home) {
                 HomeBottomBar(state)
             }
+        }
         }
     }
     GlobalDialogs(state)

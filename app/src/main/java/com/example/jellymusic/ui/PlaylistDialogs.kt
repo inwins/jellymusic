@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -401,6 +402,13 @@ private fun TrackActionsDialog(state: AppState) {
                         scope.launch { runCatching { state.api?.markPlayed(item.id) } }
                         state.trackMenu = null
                     }
+                }
+                ActionRow(
+                    icon = { Icon(Icons.Default.Checklist, contentDescription = null) },
+                    text = stringResource(R.string.multi_select),
+                ) {
+                    state.selection.begin(item)
+                    state.trackMenu = null
                 }
                 ActionRow(
                     icon = { Icon(Icons.Default.Info, contentDescription = null) },

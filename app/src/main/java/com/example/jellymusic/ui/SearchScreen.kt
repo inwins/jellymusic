@@ -141,6 +141,7 @@ fun SearchScreen(state: AppState) {
         }
     }
 
+    RegisterSelectableItems(if (kind == 0) filtered else emptyList())
     Column(Modifier.fillMaxSize()) {
         TopBar(stringResource(R.string.search), onBack = { state.back() })
 

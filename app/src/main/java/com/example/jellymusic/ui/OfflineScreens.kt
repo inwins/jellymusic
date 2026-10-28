@@ -22,6 +22,7 @@ fun OfflineAlbumScreen(state: AppState, screen: Screen.OfflineAlbum) {
             EmptyHint(stringResource(R.string.no_downloaded_songs))
             return@Column
         }
+        RegisterSelectableItems(tracks)
         LazyColumn(Modifier.fillMaxSize()) {
             item {
                 DetailHeader(
@@ -64,6 +65,7 @@ fun OfflineArtistScreen(state: AppState, screen: Screen.OfflineArtist) {
             EmptyHint(stringResource(R.string.no_downloaded_songs))
             return@Column
         }
+        RegisterSelectableItems(tracks)
         LazyColumn(Modifier.fillMaxSize()) {
             item {
                 DetailHeader(

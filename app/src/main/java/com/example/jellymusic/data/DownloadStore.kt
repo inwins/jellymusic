@@ -114,6 +114,21 @@ class DownloadStore(
         pump(api)
     }
 
+    fun downloadAll(api: JellyfinApi, items: List<BaseItem>) {
+        val added = items
+            .distinctBy { it.id }
+            .filter { item ->
+                !records.containsKey(item.id) &&
+                    !progress.containsKey(item.id) &&
+                    !activeItems.containsKey(item.id) &&
+                    pending.none { it.id == item.id }
+            }
+        if (added.isEmpty()) return
+        pending.addAll(added)
+        savePending()
+        pump(api)
+    }
+
     fun cancel(item: BaseItem) {
         pending.removeAll { it.id == item.id }
         savePending()
@@ -143,9 +158,10 @@ class DownloadStore(
 
     private fun pump(api: JellyfinApi) {
         if (paused.value) return
+        var changed = false
         while (active < maxConcurrent && pending.isNotEmpty()) {
             val item = pending.removeAt(0)
-            savePending()
+            changed = true
             active++
             activeItems[item.id] = item
             val job = scope.launch {
@@ -160,6 +176,7 @@ class DownloadStore(
             }
             jobs[item.id] = job
         }
+        if (changed) savePending()
     }
 
     suspend fun downloadNow(api: JellyfinApi, item: BaseItem): Boolean {

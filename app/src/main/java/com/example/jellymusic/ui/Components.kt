@@ -211,20 +211,37 @@ fun TrackRow(
     selected: Boolean = false,
     onSelect: (() -> Unit)? = null,
 ) {
+    val selection = LocalSelection.current
+    val inSelection = selection?.selecting == true
+    val effectiveSelectable = selectable || inSelection
+    val effectiveSelected = if (inSelection) {
+        selection?.selected?.containsKey(item.id) == true
+    } else {
+        selected
+    }
+    val effectiveOnSelect: (() -> Unit)? = if (inSelection) {
+        { selection?.toggle(item) }
+    } else {
+        onSelect
+    }
     Row(
         Modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { if (selectable) onSelect?.invoke() else onClick() },
-                onLongClick = onLongClick,
+                onClick = {
+                    if (effectiveSelectable) effectiveOnSelect?.invoke() else onClick()
+                },
+                onLongClick = {
+                    if (inSelection) effectiveOnSelect?.invoke() else onLongClick?.invoke()
+                },
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (selectable) {
+        if (effectiveSelectable) {
             Checkbox(
-                checked = selected,
-                onCheckedChange = { onSelect?.invoke() },
+                checked = effectiveSelected,
+                onCheckedChange = { effectiveOnSelect?.invoke() },
                 modifier = Modifier.size(36.dp),
             )
             Spacer(Modifier.width(4.dp))

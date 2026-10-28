@@ -1,5 +1,12 @@
 Jellyfin Music — Changelog
 
+2.26.9
+- Batch download for folders: download every song in a folder and its subfolders from the folder browser
+- Multi-select in every track list: long-press a song, choose Multi-select, then tap rows to select
+- Batch actions: add to queue, add to playlist, download, favorite/unfavorite and delete downloads
+- Select all in all songs, album/artist/playlist/local playlist, favorites, downloads, search, genres and offline lists
+- Batch downloads are queued in a single pass so large folders download smoothly
+
 2.26.8
 - Downloads are now saved as "Artist - Title [ID].ext", so files are easy to recognize in the Music folder
 - New "Rename downloads" action in Settings → Downloads to rename existing ID-named files

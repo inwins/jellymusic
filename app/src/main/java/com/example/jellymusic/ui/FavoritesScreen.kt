@@ -75,6 +75,7 @@ fun FavoritesScreen(state: AppState) {
 
             else -> {
                 val list = items.orEmpty()
+                RegisterSelectableItems(list)
                 LaunchedEffect(list.size, state.player.current?.id) {
                     if (!didScroll && list.isNotEmpty()) {
                         val index = list.indexOfFirst { it.id == state.player.current?.id }

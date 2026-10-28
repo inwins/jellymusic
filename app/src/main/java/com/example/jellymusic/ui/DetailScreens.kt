@@ -87,6 +87,7 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
                     { it.name },
                 ),
             )
+            RegisterSelectableItems(tracks)
             val multiDisc = tracks.any { (it.discNumber ?: 1) > 1 }
             val listState = rememberLazyListState()
             var didScroll by remember { mutableStateOf(false) }
@@ -109,9 +110,7 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
                         onPlay = { state.player.play(tracks, 0) },
                         onShuffle = { state.player.playShuffled(tracks) },
                         onDownloadAll = {
-                            state.api?.let { api ->
-                                tracks.forEach { state.downloads.download(api, it) }
-                            }
+                            state.api?.let { api -> state.downloads.downloadAll(api, tracks) }
                         },
                     )
                 }
@@ -219,6 +218,7 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
             val visibleSongs = remember(orderedSongs, showAllSongs) {
                 if (showAllSongs) orderedSongs else orderedSongs.take(50)
             }
+            RegisterSelectableItems(visibleSongs)
             LaunchedEffect(screen.id) {
                 similarArtists = runCatching {
                     state.requireApi().getSimilarArtists(screen.id, 20)
@@ -408,6 +408,7 @@ fun PlaylistScreen(state: AppState, screen: Screen.Playlist) {
             if (tracks.isEmpty()) {
                 EmptyHint(stringResource(R.string.playlist_empty))
             } else {
+                RegisterSelectableItems(tracks)
                 val listState = rememberLazyListState()
                 var didScroll by remember { mutableStateOf(false) }
                 LaunchedEffect(tracks.size, state.player.current?.id) {
@@ -430,7 +431,7 @@ fun PlaylistScreen(state: AppState, screen: Screen.Playlist) {
                             onShuffle = { state.player.playShuffled(tracks) },
                             onDownloadAll = {
                                 state.api?.let { api ->
-                                    tracks.forEach { state.downloads.download(api, it) }
+                                    state.downloads.downloadAll(api, tracks)
                                 }
                             },
                         )
@@ -517,6 +518,7 @@ fun LocalPlaylistScreen(state: AppState, screen: Screen.LocalPlaylist) {
     }
 
     val items = playlist.items.toList()
+    RegisterSelectableItems(items)
     Column(Modifier.fillMaxSize()) {
         TopBar(playlist.name, onBack = { state.back() })
         Row(

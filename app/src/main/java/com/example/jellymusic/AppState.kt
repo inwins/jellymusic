@@ -30,6 +30,7 @@ import com.example.jellymusic.data.LocalMusicStore
 import com.example.jellymusic.data.PlaybackReportStore
 import com.example.jellymusic.data.LocalPlaylistStore
 import com.example.jellymusic.data.SearchHistoryStore
+import com.example.jellymusic.data.SelectionStore
 import com.example.jellymusic.data.SessionStore
 import com.example.jellymusic.data.StreamCache
 import com.example.jellymusic.jellyfin.BaseItem
@@ -63,6 +64,7 @@ class AppState(private val context: Context) {
     val localMusic = LocalMusicStore(context)
     val localPlaylists = LocalPlaylistStore(context)
     val searchHistory = SearchHistoryStore(context)
+    val selection = SelectionStore()
 
     val isLoggedIn = mutableStateOf(session.hasSession)
     var homeTab by mutableIntStateOf(0)
@@ -394,13 +396,37 @@ class AppState(private val context: Context) {
         api ?: throw IllegalStateException("Not logged in")
 
     fun navigate(screen: Screen) {
+        selection.clear()
         backStack.add(screen)
     }
 
     fun back() {
+        selection.clear()
         if (backStack.size > 1) {
             backStack.removeAt(backStack.lastIndex)
         }
+    }
+
+    suspend fun queueFolderDownload(folderId: String): Int {
+        val api = api ?: return 0
+        val audio = mutableListOf<BaseItem>()
+        val queue = ArrayDeque<String>()
+        queue.add(folderId)
+        val visited = mutableSetOf<String>()
+        while (queue.isNotEmpty() && audio.size < 5000) {
+            val id = queue.removeFirst()
+            if (!visited.add(id)) continue
+            val children = runCatching { api.getFolderChildren(id) }.getOrDefault(emptyList())
+            for (child in children) {
+                if (child.type == "Audio") {
+                    audio.add(child)
+                } else if (child.isFolder) {
+                    queue.add(child.id)
+                }
+            }
+        }
+        downloads.downloadAll(api, audio)
+        return audio.size
     }
 
     fun offlineSongs(): List<BaseItem> =
