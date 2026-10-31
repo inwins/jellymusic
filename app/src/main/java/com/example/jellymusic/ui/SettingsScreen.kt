@@ -40,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -79,6 +80,8 @@ fun SettingsScreen(state: AppState) {
     var showLogoutConfirm by remember { mutableStateOf(false) }
     var showDirectoryChoice by remember { mutableStateOf(false) }
     var showClearCache by remember { mutableStateOf(false) }
+    var editingLocalAddress by remember { mutableStateOf(false) }
+    var localAddressInput by remember { mutableStateOf("") }
     var showEqualizer by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
 
@@ -132,6 +135,54 @@ fun SettingsScreen(state: AppState) {
                 )
             }
 
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            localAddressInput = state.localServerUrl.orEmpty()
+                            editingLocalAddress = true
+                        }
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.local_address),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.current_connection,
+                                stringResource(
+                                    if (state.connectionIsLocal.value) {
+                                        R.string.connection_local
+                                    } else {
+                                        R.string.connection_remote
+                                    },
+                                ),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        state.localServerUrl ?: stringResource(R.string.not_set),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
+                }
+            }
+            item {
+                SettingSwitchRow(
+                    title = stringResource(R.string.prefer_local_address),
+                    checked = state.settings.preferLocalAddress,
+                    onCheckedChange = { state.setPreferLocalAddress(it) },
+                )
+            }
             item {
                 Row(
                     Modifier
@@ -1468,6 +1519,43 @@ fun SettingsScreen(state: AppState) {
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (editingLocalAddress) {
+        AlertDialog(
+            onDismissRequest = { editingLocalAddress = false },
+            title = { Text(stringResource(R.string.local_address)) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = localAddressInput,
+                        onValueChange = { localAddressInput = it },
+                        singleLine = true,
+                        placeholder = { Text("http://192.168.1.100:8096") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.local_address_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.setLocalServerUrl(localAddressInput.trim().ifBlank { null })
+                    editingLocalAddress = false
+                }) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingLocalAddress = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

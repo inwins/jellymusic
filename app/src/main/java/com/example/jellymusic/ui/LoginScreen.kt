@@ -2,6 +2,7 @@ package com.example.jellymusic.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +52,12 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(state: AppState) {
-    var server by rememberSaveable { mutableStateOf("") }
+    var scheme by rememberSaveable { mutableStateOf("http") }
+    var host by rememberSaveable { mutableStateOf("") }
+    var port by rememberSaveable { mutableStateOf("8096") }
+    val serverUrl = buildServerUrl(scheme, host, port)
+    val portValid = port.trim().isEmpty() ||
+        port.trim().toIntOrNull()?.let { it in 1..65535 } == true
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
@@ -105,15 +113,71 @@ fun LoginScreen(state: AppState) {
             Spacer(Modifier.height(12.dp))
         }
 
-        OutlinedTextField(
-            value = server,
-            onValueChange = { server = it },
-            label = { Text(stringResource(R.string.server_address)) },
-            placeholder = { Text(stringResource(R.string.server_address_hint)) },
-            singleLine = true,
-            enabled = !loading,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = scheme == "http",
+                onClick = {
+                    if (scheme != "http") {
+                        if (port == "8920" || port.isBlank()) port = "8096"
+                        scheme = "http"
+                    }
+                },
+                label = { Text("HTTP") },
+                enabled = !loading,
+            )
+            FilterChip(
+                selected = scheme == "https",
+                onClick = {
+                    if (scheme != "https") {
+                        if (port == "8096" || port.isBlank()) port = "8920"
+                        scheme = "https"
+                    }
+                },
+                label = { Text("HTTPS") },
+                enabled = !loading,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = host,
+                onValueChange = { host = it },
+                label = { Text(stringResource(R.string.server_address)) },
+                placeholder = { Text(stringResource(R.string.server_address_hint)) },
+                singleLine = true,
+                enabled = !loading,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = port,
+                onValueChange = { value ->
+                    if (value.all { it.isDigit() }) port = value
+                },
+                label = { Text(stringResource(R.string.port)) },
+                singleLine = true,
+                enabled = !loading,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                ),
+                isError = !portValid,
+                modifier = Modifier.width(108.dp),
+            )
+        }
+        if (!portValid) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.invalid_port),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = username,
@@ -172,14 +236,15 @@ fun LoginScreen(state: AppState) {
                 loading = true
                 error = null
                 scope.launch {
-                    val result = state.login(server, username, password)
+                    val result = state.login(serverUrl, username, password)
                     if (result.isFailure) {
                         error = result.exceptionOrNull()?.message ?: loginFailedMessage
                         loading = false
                     }
                 }
             },
-            enabled = !loading && server.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+            enabled = !loading && host.isNotBlank() && portValid &&
+                username.isNotBlank() && password.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (loading) {
@@ -195,18 +260,18 @@ fun LoginScreen(state: AppState) {
         Spacer(Modifier.height(12.dp))
         TextButton(
             onClick = {
-                if (server.isBlank()) {
+                if (serverUrl.isBlank()) {
                     error = loginFailedMessage
                     return@TextButton
                 }
                 error = null
                 scope.launch {
-                    state.startQuickConnect(server)
+                    state.startQuickConnect(serverUrl)
                         .onSuccess { quickConnect = it }
                         .onFailure { error = it.message ?: loginFailedMessage }
                 }
             },
-            enabled = !loading && server.isNotBlank(),
+            enabled = !loading && host.isNotBlank() && portValid,
         ) {
             Text(stringResource(R.string.quick_connect_start))
         }
@@ -231,4 +296,12 @@ fun LoginScreen(state: AppState) {
             },
         )
     }
+}
+private fun buildServerUrl(scheme: String, host: String, port: String): String {
+    val raw = host.trim().trimEnd('/')
+    if (raw.isEmpty()) return ""
+    val lower = raw.lowercase()
+    if (lower.startsWith("http://") || lower.startsWith("https://")) return raw
+    val portPart = port.trim().takeIf { it.isNotEmpty() }?.let { ":$it" } ?: ""
+    return "$scheme://$raw$portPart"
 }

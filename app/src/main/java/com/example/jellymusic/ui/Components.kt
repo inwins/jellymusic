@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -47,6 +48,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -210,8 +213,10 @@ fun TrackRow(
     selectable: Boolean = false,
     selected: Boolean = false,
     onSelect: (() -> Unit)? = null,
+    trailingLabel: String? = null,
 ) {
     val selection = LocalSelection.current
+    val haptics = LocalHapticFeedback.current
     val inSelection = selection?.selecting == true
     val effectiveSelectable = selectable || inSelection
     val effectiveSelected = if (inSelection) {
@@ -232,7 +237,14 @@ fun TrackRow(
                     if (effectiveSelectable) effectiveOnSelect?.invoke() else onClick()
                 },
                 onLongClick = {
-                    if (inSelection) effectiveOnSelect?.invoke() else onLongClick?.invoke()
+                    when {
+                        inSelection -> effectiveOnSelect?.invoke()
+                        selection != null -> {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            selection.begin(item)
+                        }
+                        else -> onLongClick?.invoke()
+                    }
                 },
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -282,7 +294,7 @@ fun TrackRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (onToggleFavorite != null) {
+        if (onToggleFavorite != null && !inSelection) {
             IconButton(onClick = onToggleFavorite) {
                 Icon(
                     if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -298,7 +310,7 @@ fun TrackRow(
                 )
             }
         }
-        if (onDownload != null) {
+        if (onDownload != null && !inSelection) {
             IconButton(onClick = onDownload) {
                 when {
                     downloading != null -> CircularProgressIndicator(
@@ -336,7 +348,7 @@ fun TrackRow(
                 }
             }
         }
-        if (onRemove != null) {
+        if (onRemove != null && !inSelection) {
             IconButton(onClick = onRemove) {
                 Icon(
                     Icons.Default.RemoveCircleOutline,
@@ -346,9 +358,22 @@ fun TrackRow(
                 )
             }
         }
+        if (!inSelection && onLongClick != null) {
+            IconButton(
+                onClick = onLongClick,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    Icons.Default.MoreVert,
+                    contentDescription = stringResource(R.string.more),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
         Spacer(Modifier.width(4.dp))
         Text(
-            item.durationMs?.let { formatDuration(it) }.orEmpty(),
+            trailingLabel ?: item.durationMs?.let { formatDuration(it) }.orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

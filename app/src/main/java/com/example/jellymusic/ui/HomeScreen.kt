@@ -31,8 +31,11 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -1003,14 +1006,41 @@ private fun ServerPlaylistRow(
 fun DownloadsTab(state: AppState) {
     var mode by rememberSaveable { mutableIntStateOf(0) }
     var groupByFolder by rememberSaveable { mutableStateOf(false) }
+    var sortMode by rememberSaveable { mutableIntStateOf(0) }
+    var sortMenu by remember { mutableStateOf(false) }
+    var showDeleteAll by remember { mutableStateOf(false) }
     val downloadedMap = state.downloads.downloadedIds
     val revision = state.streamCache.revision.value
     val downloaded = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
-    RegisterSelectableItems(downloaded)
+    val downloadedSorted = remember(downloaded, sortMode) {
+        when (sortMode) {
+            1 -> downloaded.sortedBy { (it.trackArtist ?: "").lowercase() }
+            2 -> downloaded.sortedWith(
+                compareBy<BaseItem>(
+                    { it.album ?: "" },
+                    { it.discNumber ?: 1 },
+                    { it.trackNumber ?: 0 },
+                ),
+            )
+            3 -> downloaded.sortedByDescending { state.downloads.sizeBytes(it.id) }
+            4 -> downloaded.sortedByDescending { state.downloads.addedAt(it.id) }
+            else -> downloaded.sortedBy { it.name.lowercase() }
+        }
+    }
     val cached = remember(revision, downloadedMap.toMap()) {
         state.streamCache.cachedItems().filter { !state.downloads.isDownloaded(it.id) }
     }
     val local = state.localMusic.songs
+    val downloadSizes = remember(downloaded) {
+        downloaded.associate { it.id to state.downloads.sizeBytes(it.id) }
+    }
+    RegisterSelectableItems(
+        when (mode) {
+            1 -> cached
+            2 -> local
+            else -> downloadedSorted
+        },
+    )
     val context = LocalContext.current
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
@@ -1189,7 +1219,7 @@ fun DownloadsTab(state: AppState) {
             return@Column
         }
 
-        val items = if (mode == 1) cached else downloaded
+        val items = if (mode == 1) cached else downloadedSorted
         if (items.isEmpty()) {
             EmptyHint(
                 stringResource(
@@ -1225,6 +1255,55 @@ fun DownloadsTab(state: AppState) {
                         ) {
                             Text(stringResource(R.string.download_all_cached))
                         }
+                    } else {
+                        Box {
+                            TextButton(onClick = { sortMenu = true }) {
+                                Text(
+                                    stringResource(
+                                        when (sortMode) {
+                                            1 -> R.string.sort_artist
+                                            2 -> R.string.tab_albums
+                                            3 -> R.string.sort_size
+                                            4 -> R.string.sort_recent
+                                            else -> R.string.sort_name
+                                        },
+                                    ),
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = sortMenu,
+                                onDismissRequest = { sortMenu = false },
+                            ) {
+                                listOf(
+                                    0 to R.string.sort_name,
+                                    1 to R.string.sort_artist,
+                                    2 to R.string.tab_albums,
+                                    3 to R.string.sort_size,
+                                    4 to R.string.sort_recent,
+                                ).forEach { (value, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(label)) },
+                                        onClick = {
+                                            sortMode = value
+                                            sortMenu = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        IconButton(onClick = { state.selection.begin() }) {
+                            Icon(
+                                Icons.Default.Checklist,
+                                contentDescription = stringResource(R.string.select),
+                            )
+                        }
+                        IconButton(onClick = { showDeleteAll = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.delete_all_downloads),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
@@ -1251,9 +1330,45 @@ fun DownloadsTab(state: AppState) {
                         }
                     },
                     onLongClick = { state.trackMenu = item },
+                    trailingLabel = if (mode == 0) {
+                        formatBytes(downloadSizes[id] ?: 0L)
+                    } else {
+                        null
+                    },
                 )
             }
         }
+    }
+
+    if (showDeleteAll) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAll = false },
+            title = { Text(stringResource(R.string.delete_all_downloads)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.delete_all_downloads_confirm,
+                        downloaded.size,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    downloaded.forEach { state.downloads.delete(it) }
+                    showDeleteAll = false
+                }) {
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAll = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

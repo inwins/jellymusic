@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -42,6 +43,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
+import okhttp3.Request
+import okhttp3.OkHttpClient
+import kotlinx.coroutines.withContext
 
 class AppState(private val context: Context) {
     private val session = SessionStore(context)
@@ -69,6 +74,8 @@ class AppState(private val context: Context) {
     val isLoggedIn = mutableStateOf(session.hasSession)
     var homeTab by mutableIntStateOf(0)
     val isOnline = mutableStateOf(true)
+    val isWifi = mutableStateOf(false)
+    val connectionIsLocal = mutableStateOf(false)
     val userName = mutableStateOf(session.userName)
     val sessionExpired = mutableStateOf(false)
     val serverName = mutableStateOf<String?>(null)
@@ -143,10 +150,22 @@ class AppState(private val context: Context) {
     }
 
     private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+    @Volatile private var refreshingConnection = false
+    @Volatile private var lastConnectionProbeAt = 0L
+
+    private val probeClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(1500, TimeUnit.MILLISECONDS)
+            .readTimeout(1500, TimeUnit.MILLISECONDS)
+            .callTimeout(2500, TimeUnit.MILLISECONDS)
+            .build()
+    }
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             val wasOffline = !isOnline.value
             isOnline.value = true
+            updateNetworkType()
             lastServerCheckAt = 0
             if (wasOffline) {
                 scope.launch {
@@ -155,10 +174,100 @@ class AppState(private val context: Context) {
                     refreshSignal.value += 1
                 }
             }
+            refreshConnection()
+        }
+
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities,
+        ) {
+            updateNetworkType()
+            if (isLoggedIn.value) refreshConnection()
         }
 
         override fun onLost(network: Network) {
             isOnline.value = connectivityManager?.activeNetwork != null
+            updateNetworkType()
+        }
+    }
+
+    private fun updateNetworkType() {
+        isWifi.value = runCatching {
+            val network = connectivityManager?.activeNetwork ?: return@runCatching false
+            connectivityManager?.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        }.getOrDefault(false)
+    }
+
+    private fun probe(baseUrl: String): Boolean {
+        val request = Request.Builder()
+            .url("$baseUrl/System/Info/Public")
+            .get()
+            .build()
+        return runCatching {
+            probeClient.newCall(request).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+    }
+
+    val localServerUrl: String?
+        get() = session.localUrl
+
+    fun setLocalServerUrl(value: String?) {
+        session.updateLocalUrl(value?.trim()?.trimEnd('/')?.ifBlank { null })
+        refreshConnection(force = true)
+    }
+
+    fun setPreferLocalAddress(value: Boolean) {
+        settings.preferLocalAddress = value
+        refreshConnection(force = true)
+    }
+
+    /**
+     * Picks between the primary (remote) address and the optional LAN address.
+     * Probes both, preferring the LAN address on Wi-Fi when enabled.
+     */
+    fun refreshConnection(force: Boolean = false) {
+        if (!isLoggedIn.value) return
+        val now = System.currentTimeMillis()
+        if (refreshingConnection || (!force && now - lastConnectionProbeAt < 3000L)) return
+        val primary = session.serverUrl?.trimEnd('/') ?: return
+        val local = session.localUrl?.trimEnd('/')?.takeIf { it.isNotBlank() }
+        val preferLocal = settings.preferLocalAddress
+        val onWifi = isWifi.value
+        refreshingConnection = true
+        lastConnectionProbeAt = now
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (local == null && api?.baseUrl?.trimEnd('/') == primary) {
+                    withContext(Dispatchers.Main) { connectionIsLocal.value = false }
+                    return@launch
+                }
+                val candidates = LinkedHashSet<String>()
+                if (local != null && preferLocal && onWifi) candidates.add(local)
+                candidates.add(primary)
+                if (local != null) candidates.add(local)
+                val chosen = candidates.firstOrNull { probe(it) } ?: primary
+                val usingLocal = local != null && chosen == local
+                if (api?.baseUrl?.trimEnd('/') == chosen) {
+                    withContext(Dispatchers.Main) {
+                        connectionIsLocal.value = usingLocal
+                    }
+                    return@launch
+                }
+                val client = JellyfinApi(context, chosen, deviceId, Build.MODEL)
+                client.accessToken = session.token
+                client.userId = session.userId
+                setupApi(client)
+                withContext(Dispatchers.Main) {
+                    api = client
+                    player.api = client
+                    downloads.resumePending(client)
+                    connectionIsLocal.value = usingLocal
+                }
+                refreshServerInfo()
+            } finally {
+                refreshingConnection = false
+            }
         }
     }
 
@@ -166,6 +275,7 @@ class AppState(private val context: Context) {
 
     init {
         player.downloadStore = downloads
+        updateNetworkType()
         runCatching { connectivityManager?.registerDefaultNetworkCallback(networkCallback) }
         bindPlaybackService()
         if (session.hasSession) {
@@ -208,6 +318,7 @@ class AppState(private val context: Context) {
         AutoDownloadScheduler.schedule(context)
         player.restoreState()
         refreshServerInfo()
+        refreshConnection(force = true)
         scope.launch { syncOfflineChanges() }
     }
 
@@ -217,10 +328,15 @@ class AppState(private val context: Context) {
             val a = JellyfinApi(context, server, deviceId, Build.MODEL)
             val auth = a.authenticate(username.trim(), password)
             setupApi(a)
+            val savedLocal = session.servers()
+                .firstOrNull { it.url == server }
+                ?.localUrl
+                ?.ifBlank { null }
             session.serverUrl = server
             session.token = auth.accessToken
             session.userId = auth.userId
             session.userName = auth.displayName
+            session.localUrl = savedLocal
             api = a
             player.api = a
             downloads.resumePending(a)
@@ -298,6 +414,7 @@ class AppState(private val context: Context) {
         backStack.clear()
         backStack.add(Screen.Home)
         refreshServerInfo()
+        refreshConnection(force = true)
         scope.launch { syncOfflineChanges() }
     }
 

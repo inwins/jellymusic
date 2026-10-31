@@ -17,7 +17,16 @@
     <string name="unknown_error">未知错误</string>
 
     <string name="server_address">服务器地址</string>
-    <string name="server_address_hint">http://192.168.1.100:8096</string>
+    <string name="local_address">本地地址</string>
+    <string name="local_address_note">同一服务器的局域网地址，例如 http://192.168.1.100:8096</string>
+    <string name="prefer_local_address">Wi-Fi 下优先使用本地地址</string>
+    <string name="current_connection">当前连接：%1$s</string>
+    <string name="connection_local">本地</string>
+    <string name="connection_remote">远程</string>
+    <string name="not_set">未设置</string>
+    <string name="port">端口</string>
+    <string name="invalid_port">端口无效（1-65535）</string>
+    <string name="server_address_hint">192.168.1.100 或 music.example.com</string>
     <string name="username">用户名</string>
     <string name="password">密码</string>
     <string name="show_password">显示密码</string>
@@ -351,6 +360,9 @@
     <string name="sort">排序</string>
     <string name="sort_random">随机</string>
     <string name="sort_artist">艺术家</string>
+    <string name="sort_size">大小</string>
+    <string name="delete_all_downloads">全部删除</string>
+    <string name="delete_all_downloads_confirm">删除全部 %1$d 首已下载歌曲？此操作不可撤销。</string>
     <string name="sort_name">名称</string>
     <string name="sort_recent">最近添加</string>
     <string name="sort_year">年份</string>

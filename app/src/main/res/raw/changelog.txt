@@ -1,5 +1,13 @@
 Jellyfin Music — Changelog
 
+2.26.11
+- Two addresses for the same server: set a LAN address and the app uses it on Wi-Fi, falling back to the remote address automatically
+- Add server form supports HTTP/HTTPS, host and port (defaults HTTP / 8096) with port validation
+- Long-press any song to enter multi-select directly; the three-dot button still opens the song menu
+- Downloads manager: sort by name/artist/album/size/recent, see per-song size, multi-select delete or delete all
+- Lyrics are saved next to the downloaded audio (.lrc) and renamed or deleted along with the song
+- Selection bar can now add to queue/playlist, download, favorite or delete downloads in bulk
+
 2.26.10
 - New Finamp-style slim seek bar with buffered progress, a small thumb and drag-anywhere seeking
 - A floating time bubble appears while dragging; elapsed time on the left, remaining time on the right

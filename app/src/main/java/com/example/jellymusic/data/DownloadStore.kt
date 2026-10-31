@@ -9,6 +9,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.example.jellymusic.R
 import com.example.jellymusic.jellyfin.BaseItem
 import com.example.jellymusic.jellyfin.JellyfinApi
+import com.example.jellymusic.jellyfin.LyricLine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -21,11 +22,13 @@ import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 data class DownloadRecord(
     val item: BaseItem,
     val uri: String,
+    val addedAt: Long = 0L,
 )
 
 data class MigrationState(
@@ -212,9 +215,14 @@ class DownloadStore(
                 }
                 val finalUri = finalizeDocument(tempUri, name)
                     ?: throw IllegalStateException(context.getString(R.string.download_save_failed))
-                records[id] = DownloadRecord(item, finalUri.toString())
+                records[id] = DownloadRecord(
+                    item,
+                    finalUri.toString(),
+                    System.currentTimeMillis(),
+                )
             }
             saveIndex()
+            runCatching { saveLyrics(api, item) }
             withContext(Dispatchers.Main) {
                 progress.remove(id)
                 downloadedIds[id] = true
@@ -297,8 +305,9 @@ class DownloadStore(
                 records.values.toList().forEach { record ->
                     try {
                         val current = Uri.parse(record.uri)
+                        val currentName = displayName(current)
                         val desired = downloadFileName(record.item)
-                        if (displayName(current) == desired) return@forEach
+                        if (currentName == desired) return@forEach
                         val newUri = if (current.scheme == "file") {
                             val file = File(current.path ?: throw IllegalStateException())
                             val target = File(file.parentFile, desired)
@@ -312,7 +321,12 @@ class DownloadStore(
                                 desired,
                             ) ?: throw IllegalStateException()
                         }
-                        records[record.item.id] = DownloadRecord(record.item, newUri.toString())
+                        currentName?.let { renameLyrics(current, it, desired) }
+                        records[record.item.id] = DownloadRecord(
+                            record.item,
+                            newUri.toString(),
+                            record.addedAt,
+                        )
                         renamed++
                     } catch (_: Exception) {
                         failed++
@@ -329,9 +343,24 @@ class DownloadStore(
         else -> runCatching { DocumentFile.fromSingleUri(context, uri)?.name }.getOrNull()
     }
 
+    fun sizeBytes(itemId: String): Long {
+        val record = records[itemId] ?: return 0L
+        val uri = Uri.parse(record.uri)
+        return when (uri.scheme) {
+            "file" -> File(uri.path ?: "").length()
+            else -> runCatching {
+                DocumentFile.fromSingleUri(context, uri)?.length() ?: 0L
+            }.getOrDefault(0L)
+        }
+    }
+
+    fun addedAt(itemId: String): Long = records[itemId]?.addedAt ?: 0L
+
     fun delete(item: BaseItem) {
         val record = records.remove(item.id) ?: return
-        deleteUri(Uri.parse(record.uri))
+        val audioUri = Uri.parse(record.uri)
+        deleteLyricsFor(audioUri)
+        deleteUri(audioUri)
         downloadedIds.remove(item.id)
         progress.remove(item.id)
         saveIndex()
@@ -375,7 +404,11 @@ class DownloadStore(
                         val finalUri = finalizeDocument(tempUri, name)
                             ?: throw IllegalStateException(context.getString(R.string.download_rename_failed))
                         deleteUri(oldUri)
-                        records[record.item.id] = DownloadRecord(record.item, finalUri.toString())
+                        records[record.item.id] = DownloadRecord(
+                            record.item,
+                            finalUri.toString(),
+                            record.addedAt,
+                        )
                     }
                     done++
                 } catch (_: Exception) {
@@ -476,6 +509,86 @@ class DownloadStore(
         return finalDoc.uri
     }
 
+    private fun lyricsDisplayName(audioName: String): String =
+        audioName.substringBeforeLast('.', audioName) + ".lrc"
+
+    private suspend fun saveLyrics(api: JellyfinApi, item: BaseItem) {
+        val lines = runCatching { api.getLyrics(item.id) }.getOrNull() ?: return
+        if (lines.isEmpty()) return
+        val name = lyricsDisplayName(downloadFileName(item))
+        val content = buildLyrics(item, lines)
+        withContext(Dispatchers.IO) {
+            runCatching {
+                if (settings.downloadTreeUri == null) {
+                    val file = File(privateDir, name)
+                    file.parentFile?.mkdirs()
+                    file.writeText(content, Charsets.UTF_8)
+                } else {
+                    val tree = targetTree() ?: return@runCatching
+                    val dir = DocumentFile.fromTreeUri(context, tree) ?: return@runCatching
+                    dir.findFile(name)?.delete()
+                    val doc = dir.createFile("application/octet-stream", name)
+                        ?: return@runCatching
+                    context.contentResolver.openOutputStream(doc.uri)?.use { stream ->
+                        stream.write(content.toByteArray(Charsets.UTF_8))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildLyrics(item: BaseItem, lines: List<LyricLine>): String {
+        fun tag(value: String): String =
+            value.replace(']', ')').replace('\n', ' ').trim()
+        return buildString {
+            append("[ti:").append(tag(item.name)).append("]\n")
+            append("[ar:").append(tag(item.trackArtist.orEmpty())).append("]\n")
+            item.album?.let { append("[al:").append(tag(it)).append("]\n") }
+            lines.forEach { line ->
+                val start = line.startMs
+                if (start != null) {
+                    val minutes = start / 60_000
+                    val seconds = (start % 60_000) / 1000.0
+                    append(String.format(Locale.US, "[%02d:%05.2f]", minutes, seconds))
+                }
+                append(line.text).append('\n')
+            }
+        }
+    }
+
+    private fun deleteLyricsFor(audioUri: Uri) {
+        runCatching {
+            if (audioUri.scheme == "file") {
+                val audio = File(audioUri.path ?: return)
+                val lyrics = File(audio.parentFile, lyricsDisplayName(audio.name))
+                if (lyrics.exists()) lyrics.delete()
+            } else {
+                val audioName = displayName(audioUri) ?: return
+                val tree = targetTree() ?: return
+                val dir = DocumentFile.fromTreeUri(context, tree) ?: return
+                dir.findFile(lyricsDisplayName(audioName))?.delete()
+            }
+        }
+    }
+
+    private fun renameLyrics(audioUri: Uri, oldAudioName: String, newAudioName: String) {
+        val oldName = lyricsDisplayName(oldAudioName)
+        val newName = lyricsDisplayName(newAudioName)
+        if (oldName == newName) return
+        runCatching {
+            if (audioUri.scheme == "file") {
+                val audio = File(audioUri.path ?: return)
+                val oldFile = File(audio.parentFile, oldName)
+                if (oldFile.exists()) oldFile.renameTo(File(audio.parentFile, newName))
+            } else {
+                val tree = targetTree() ?: return
+                val dir = DocumentFile.fromTreeUri(context, tree) ?: return
+                val doc = dir.findFile(oldName) ?: return
+                DocumentsContract.renameDocument(context.contentResolver, doc.uri, newName)
+            }
+        }
+    }
+
     private fun deleteUri(uri: Uri) {
         when (uri.scheme) {
             "file" -> runCatching { File(uri.path ?: return).delete() }
@@ -516,7 +629,11 @@ class DownloadStore(
                 }
                 val uri = Uri.parse(rawUri)
                 if (exists(uri)) {
-                    records[item.id] = DownloadRecord(item, rawUri)
+                    records[item.id] = DownloadRecord(
+                        item,
+                        rawUri,
+                        json.optLong("addedAt", 0L),
+                    )
                     downloadedIds[item.id] = true
                 }
             }
@@ -529,7 +646,11 @@ class DownloadStore(
         try {
             val array = JSONArray()
             records.values.forEach { record ->
-                array.put(itemToJson(record.item).put("uri", record.uri))
+                array.put(
+                    itemToJson(record.item)
+                        .put("uri", record.uri)
+                        .put("addedAt", record.addedAt),
+                )
             }
             indexFile.writeText(array.toString())
         } catch (_: Exception) {

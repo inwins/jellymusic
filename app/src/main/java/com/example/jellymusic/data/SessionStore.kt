@@ -9,6 +9,7 @@ data class ServerInfo(
     val token: String,
     val userId: String,
     val userName: String,
+    val localUrl: String = "",
 )
 
 class SessionStore(context: Context) {
@@ -38,6 +39,12 @@ class SessionStore(context: Context) {
             prefs.edit().putString(KEY_USER_NAME, value).apply()
         }
 
+    var localUrl: String?
+        get() = prefs.getString(KEY_LOCAL_URL, null)
+        set(value) {
+            prefs.edit().putString(KEY_LOCAL_URL, value?.trim()?.trimEnd('/')).apply()
+        }
+
     val hasSession: Boolean
         get() = !serverUrl.isNullOrBlank() && !token.isNullOrBlank()
 
@@ -52,6 +59,7 @@ class SessionStore(context: Context) {
                     token = SecretBox.decrypt(json.optString("token")).orEmpty(),
                     userId = json.optString("userId"),
                     userName = json.optString("userName"),
+                    localUrl = json.optString("localUrl"),
                 )
             }
         }.getOrDefault(emptyList())
@@ -61,7 +69,16 @@ class SessionStore(context: Context) {
         val url = serverUrl ?: return
         val currentToken = token ?: return
         val list = servers().filter { it.url != url }.toMutableList()
-        list.add(0, ServerInfo(url, currentToken, userId.orEmpty(), userName.orEmpty()))
+        list.add(
+            0,
+            ServerInfo(
+                url = url,
+                token = currentToken,
+                userId = userId.orEmpty(),
+                userName = userName.orEmpty(),
+                localUrl = localUrl.orEmpty(),
+            ),
+        )
         saveServers(list)
     }
 
@@ -70,6 +87,12 @@ class SessionStore(context: Context) {
         token = server.token
         userId = server.userId
         userName = server.userName
+        localUrl = server.localUrl.ifBlank { null }
+        rememberCurrent()
+    }
+
+    fun updateLocalUrl(value: String?) {
+        localUrl = value?.ifBlank { null }
         rememberCurrent()
     }
 
@@ -81,7 +104,8 @@ class SessionStore(context: Context) {
                     .put("url", server.url)
                     .put("token", SecretBox.encrypt(server.token))
                     .put("userId", server.userId)
-                    .put("userName", server.userName),
+                    .put("userName", server.userName)
+                    .put("localUrl", server.localUrl),
             )
         }
         prefs.edit().putString(KEY_SERVERS, array.toString()).apply()
@@ -98,6 +122,7 @@ class SessionStore(context: Context) {
         const val KEY_TOKEN = "access_token"
         const val KEY_USER_ID = "user_id"
         const val KEY_USER_NAME = "user_name"
+        const val KEY_LOCAL_URL = "local_url"
         const val KEY_SERVERS = "servers"
     }
 }

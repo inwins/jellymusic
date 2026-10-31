@@ -152,6 +152,17 @@ class AppSettings(context: Context) {
             prefs.edit().putBoolean(KEY_FADE_ENABLED, value).apply()
         }
 
+    private var preferLocalAddressState by mutableStateOf(
+        prefs.getBoolean(KEY_PREFER_LOCAL_ADDRESS, true),
+    )
+
+    var preferLocalAddress: Boolean
+        get() = preferLocalAddressState
+        set(value) {
+            preferLocalAddressState = value
+            prefs.edit().putBoolean(KEY_PREFER_LOCAL_ADDRESS, value).apply()
+        }
+
     private var fadeMsState by mutableStateOf(prefs.getInt(KEY_FADE_MS, DEFAULT_FADE_MS))
 
     var fadeMs: Int
@@ -362,6 +373,7 @@ class AppSettings(context: Context) {
         const val KEY_DYNAMIC_COLOR = "dynamic_color"
         const val KEY_AMOLED_DARK = "amoled_dark"
         const val KEY_FADE_ENABLED = "fade_enabled"
+        const val KEY_PREFER_LOCAL_ADDRESS = "prefer_local_address"
         const val KEY_FADE_MS = "fade_ms"
         const val KEY_REMEMBER_POSITION = "remember_position"
         const val KEY_PLAYBACK_SPEED = "playback_speed"
