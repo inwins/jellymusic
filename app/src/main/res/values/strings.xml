@@ -11,6 +11,8 @@
     <string name="next">Next</string>
     <string name="download">Download</string>
     <string name="downloaded">Downloaded</string>
+    <string name="delete_download_confirm_text">Delete “%1$s” from this device?</string>
+    <string name="delete_downloads_confirm_text">Delete the %1$d selected downloads?</string>
     <string name="delete_download">Delete download</string>
     <string name="clear">Clear</string>
     <string name="loading_failed">Failed to load</string>

@@ -11,6 +11,8 @@
     <string name="next">下一首</string>
     <string name="download">下载</string>
     <string name="downloaded">已下载</string>
+    <string name="delete_download_confirm_text">确定删除《%1$s》？文件将从本机移除。</string>
+    <string name="delete_downloads_confirm_text">确定删除选中的 %1$d 首下载？</string>
     <string name="delete_download">删除下载</string>
     <string name="clear">清理</string>
     <string name="loading_failed">加载失败</string>

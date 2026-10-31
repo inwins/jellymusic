@@ -19,6 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -54,6 +58,7 @@ fun SelectionBar(state: AppState) {
     val downloaded = audioItems.filter { state.downloads.isDownloaded(it.id) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    var confirmDelete by remember { mutableStateOf(false) }
 
     Surface(tonalElevation = 8.dp, shadowElevation = 8.dp) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp)) {
@@ -143,16 +148,23 @@ fun SelectionBar(state: AppState) {
                     )
                 }
                 if (downloaded.isNotEmpty()) {
-                    TextButton(
-                        onClick = {
-                            downloaded.forEach { state.downloads.delete(it) }
-                            selection.clear()
-                        },
-                    ) {
+                    TextButton(onClick = { confirmDelete = true }) {
                         Text(stringResource(R.string.delete_download))
                     }
                 }
             }
         }
+    }
+
+    if (confirmDelete) {
+        DeleteDownloadsDialog(
+            count = downloaded.size,
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                downloaded.forEach { state.downloads.delete(it) }
+                confirmDelete = false
+                selection.clear()
+            },
+        )
     }
 }

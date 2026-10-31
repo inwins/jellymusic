@@ -268,6 +268,7 @@ fun NowPlayingScreen(state: AppState) {
         onDispose { metronome.stop() }
     }
     var moreMenuOpen by remember { mutableStateOf(false) }
+    var confirmDeleteDownload by remember { mutableStateOf(false) }
     var showSleepDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showAbDialog by remember { mutableStateOf(false) }
@@ -493,7 +494,7 @@ fun NowPlayingScreen(state: AppState) {
                                     moreMenuOpen = false
                                     when {
                                         downloadProgress != null -> state.downloads.cancel(current)
-                                        downloaded -> state.downloads.delete(current)
+                                        downloaded -> confirmDeleteDownload = true
                                         downloadError -> state.api?.let { state.downloads.retry(it, current) }
                                         else -> state.api?.let { state.downloads.download(it, current) }
                                     }

@@ -284,6 +284,7 @@ private fun TrackActionsDialog(state: AppState) {
     val cached = state.streamCache.isCached(item.id)
     val rating = state.ratings.rating(item.id)
     val scope = rememberCoroutineScope()
+    var confirmDelete by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { state.trackMenu = null },
@@ -442,12 +443,20 @@ private fun TrackActionsDialog(state: AppState) {
                         ),
                     ) {
                         when {
-                            downloading -> state.downloads.cancel(item)
-                            downloaded -> state.downloads.delete(item)
-                            downloadError -> state.api?.let { state.downloads.retry(it, item) }
-                            else -> state.api?.let { state.downloads.download(it, item) }
+                            downloading -> {
+                                state.downloads.cancel(item)
+                                state.trackMenu = null
+                            }
+                            downloaded -> confirmDelete = true
+                            downloadError -> {
+                                state.api?.let { state.downloads.retry(it, item) }
+                                state.trackMenu = null
+                            }
+                            else -> {
+                                state.api?.let { state.downloads.download(it, item) }
+                                state.trackMenu = null
+                            }
                         }
-                        state.trackMenu = null
                     }
                 }
             }
@@ -458,6 +467,18 @@ private fun TrackActionsDialog(state: AppState) {
             }
         },
     )
+
+    if (confirmDelete) {
+        DeleteDownloadDialog(
+            item = item,
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                state.downloads.delete(item)
+                confirmDelete = false
+                state.trackMenu = null
+            },
+        )
+    }
 }
 
 @Composable

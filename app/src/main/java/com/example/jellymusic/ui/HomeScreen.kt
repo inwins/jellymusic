@@ -299,6 +299,7 @@ fun HomeTab(state: AppState) {
 
 @Composable
 fun OfflineHome(state: AppState) {
+    var pendingDelete by remember { mutableStateOf<BaseItem?>(null) }
     val downloadedMap = state.downloads.downloadedIds
     val items = remember(downloadedMap.toMap(), state.localMusic.songs.size) {
         (state.downloads.downloadedItems() + state.localMusic.songs).distinctBy { it.id }
@@ -1009,6 +1010,7 @@ fun DownloadsTab(state: AppState) {
     var sortMode by rememberSaveable { mutableIntStateOf(0) }
     var sortMenu by remember { mutableStateOf(false) }
     var showDeleteAll by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<BaseItem?>(null) }
     val downloadedMap = state.downloads.downloadedIds
     val revision = state.streamCache.revision.value
     val downloaded = remember(downloadedMap.toMap()) { state.downloads.downloadedItems() }
@@ -1323,7 +1325,7 @@ fun DownloadsTab(state: AppState) {
                         if (mode == 1) {
                             state.api?.let { api -> state.downloads.download(api, item) }
                         } else {
-                            state.downloads.delete(item)
+                            pendingDelete = item
                         }
                     },
                     onLongClick = { state.trackMenu = item },
@@ -1336,6 +1338,15 @@ fun DownloadsTab(state: AppState) {
             }
         }
     }
+
+    DeleteDownloadDialog(
+        item = pendingDelete,
+        onDismiss = { pendingDelete = null },
+        onConfirm = {
+            pendingDelete?.let { state.downloads.delete(it) }
+            pendingDelete = null
+        },
+    )
 
     if (showDeleteAll) {
         AlertDialog(
