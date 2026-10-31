@@ -77,6 +77,7 @@ class AppState(private val context: Context) {
     val isWifi = mutableStateOf(false)
     val connectionIsLocal = mutableStateOf(false)
     val userName = mutableStateOf(session.userName)
+    val localServerUrlState = mutableStateOf(session.localUrl)
     val sessionExpired = mutableStateOf(false)
     val serverName = mutableStateOf<String?>(null)
     val serverVersion = mutableStateOf<String?>(null)
@@ -210,10 +211,11 @@ class AppState(private val context: Context) {
     }
 
     val localServerUrl: String?
-        get() = session.localUrl
+        get() = localServerUrlState.value
 
     fun setLocalServerUrl(value: String?) {
         session.updateLocalUrl(value?.trim()?.trimEnd('/')?.ifBlank { null })
+        localServerUrlState.value = session.localUrl
         refreshConnection(force = true)
     }
 
@@ -314,6 +316,7 @@ class AppState(private val context: Context) {
         setupApi(a)
         api = a
         player.api = a
+        localServerUrlState.value = session.localUrl
         downloads.resumePending(a)
         AutoDownloadScheduler.schedule(context)
         player.restoreState()
@@ -337,6 +340,7 @@ class AppState(private val context: Context) {
             session.userId = auth.userId
             session.userName = auth.displayName
             session.localUrl = savedLocal
+            localServerUrlState.value = session.localUrl
             api = a
             player.api = a
             downloads.resumePending(a)
@@ -404,6 +408,7 @@ class AppState(private val context: Context) {
         client.userId = server.userId
         setupApi(client)
         session.setActive(server)
+        localServerUrlState.value = session.localUrl
         api = client
         player.api = client
         downloads.resumePending(client)
@@ -424,6 +429,7 @@ class AppState(private val context: Context) {
         releasePlaybackService()
         player.stop()
         session.clear()
+        localServerUrlState.value = null
         diskCache.clear()
         AuthHeaders.clear()
         streamCache.setAccessToken(null)

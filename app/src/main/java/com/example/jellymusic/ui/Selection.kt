@@ -1,5 +1,7 @@
 package com.example.jellymusic.ui
 
+import android.widget.Toast
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,15 +19,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.jellymusic.AppState
 import com.example.jellymusic.R
 import com.example.jellymusic.data.SelectionStore
 import com.example.jellymusic.jellyfin.BaseItem
+import kotlinx.coroutines.launch
 
 val LocalSelection = staticCompositionLocalOf<SelectionStore?> { null }
 
@@ -40,10 +45,15 @@ fun SelectionBar(state: AppState) {
     val selection = state.selection
     if (!selection.selecting) return
     val items = selection.selected.values.toList()
-    val allFavorite = items.isNotEmpty() && items.all { state.favorites.isFavorite(it) }
-    val canAddToPlaylist = items.any { it.localUri == null }
+    val audioItems = items.filter { !it.isFolder }
+    val folderItems = items.filter { it.isFolder }
+    val downloadableAudio = audioItems.filter { it.localUri == null }
+    val allFavorite = audioItems.isNotEmpty() && audioItems.all { state.favorites.isFavorite(it) }
+    val canAddToPlaylist = audioItems.any { it.localUri == null }
     val api = state.api
-    val downloaded = items.filter { state.downloads.isDownloaded(it.id) }
+    val downloaded = audioItems.filter { state.downloads.isDownloaded(it.id) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Surface(tonalElevation = 8.dp, shadowElevation = 8.dp) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp)) {
@@ -71,16 +81,16 @@ fun SelectionBar(state: AppState) {
             ) {
                 TextButton(
                     onClick = {
-                        items.forEach { state.player.addToQueue(it) }
+                        audioItems.forEach { state.player.addToQueue(it) }
                         selection.clear()
                     },
-                    enabled = items.isNotEmpty(),
+                    enabled = audioItems.isNotEmpty(),
                 ) {
                     Text(stringResource(R.string.add_to_queue))
                 }
                 TextButton(
                     onClick = {
-                        state.addToPlaylistBatch = items
+                        state.addToPlaylistBatch = audioItems
                         selection.clear()
                     },
                     enabled = canAddToPlaylist,
@@ -89,28 +99,42 @@ fun SelectionBar(state: AppState) {
                 }
                 TextButton(
                     onClick = {
-                        api?.let { server ->
-                            state.downloads.downloadAll(
-                                server,
-                                items.filter { it.localUri == null },
-                            )
+                        val server = api
+                        if (server != null) {
+                            if (downloadableAudio.isNotEmpty()) {
+                                state.downloads.downloadAll(server, downloadableAudio)
+                            }
+                            if (folderItems.isNotEmpty()) {
+                                scope.launch {
+                                    var count = downloadableAudio.size
+                                    folderItems.forEach { folder ->
+                                        count += state.queueFolderDownload(folder.id)
+                                    }
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.download_folder_queued, count),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
                         }
                         selection.clear()
                     },
-                    enabled = api != null && items.any { it.localUri == null },
+                    enabled = api != null &&
+                        (downloadableAudio.isNotEmpty() || folderItems.isNotEmpty()),
                 ) {
                     Text(stringResource(R.string.download))
                 }
                 TextButton(
                     onClick = {
-                        items.forEach { item ->
+                        audioItems.forEach { item ->
                             if (state.favorites.isFavorite(item) == allFavorite) {
                                 state.favorites.toggle(item)
                             }
                         }
                         selection.clear()
                     },
-                    enabled = items.isNotEmpty(),
+                    enabled = audioItems.isNotEmpty(),
                 ) {
                     Text(
                         stringResource(

@@ -1,6 +1,8 @@
 package com.example.jellymusic.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MusicNote
 import android.widget.Toast
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +32,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,7 +56,18 @@ fun FoldersScreen(state: AppState) {
         }
     }
     Column(Modifier.fillMaxSize()) {
-        TopBar(stringResource(R.string.folders), onBack = { state.back() })
+        TopBar(
+            stringResource(R.string.folders),
+            onBack = { state.back() },
+            actions = {
+                IconButton(onClick = { state.selection.begin() }) {
+                    Icon(
+                        Icons.Default.Checklist,
+                        contentDescription = stringResource(R.string.select),
+                    )
+                }
+            },
+        )
 
         if (state.isOffline) {
             EmptyHint(stringResource(R.string.offline_hint))
@@ -59,6 +76,7 @@ fun FoldersScreen(state: AppState) {
 
         Loaded(key = "folders", load = { state.requireApi().getUserViews() }) { views ->
             val musicViews = views.filter { it.collectionType == "music" }.ifEmpty { views }
+            RegisterSelectableItems(musicViews)
             if (musicViews.isEmpty()) {
                 EmptyHint(stringResource(R.string.folder_empty))
             } else {
@@ -96,6 +114,12 @@ fun FolderScreen(state: AppState, screen: Screen.Folder) {
             screen.name,
             onBack = { state.back() },
             actions = {
+                IconButton(onClick = { state.selection.begin() }) {
+                    Icon(
+                        Icons.Default.Checklist,
+                        contentDescription = stringResource(R.string.select),
+                    )
+                }
                 IconButton(onClick = { downloadFolder(screen.id) }) {
                     Icon(
                         Icons.Default.Download,
@@ -118,6 +142,7 @@ fun FolderScreen(state: AppState, screen: Screen.Folder) {
                 EmptyHint(stringResource(R.string.folder_empty))
             } else {
                 val audio = children.filter { it.type == "Audio" }
+                RegisterSelectableItems(children)
                 LazyColumn(Modifier.fillMaxSize()) {
                     items(children, key = { it.id }) { item ->
                         FolderRow(
@@ -149,6 +174,7 @@ fun FolderScreen(state: AppState, screen: Screen.Folder) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderRow(
     state: AppState,
@@ -157,13 +183,39 @@ private fun FolderRow(
     onClick: () -> Unit,
     onDownload: (() -> Unit)? = null,
 ) {
+    val selection = LocalSelection.current
+    val inSelection = selection?.selecting == true
+    val selected = selection?.selected?.containsKey(item.id) == true
+    val haptics = LocalHapticFeedback.current
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = {
+                    if (inSelection) selection?.toggle(item) else onClick()
+                },
+                onLongClick = {
+                    if (inSelection) {
+                        selection?.toggle(item)
+                    } else {
+                        selection?.let {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            it.begin(item)
+                        }
+                    }
+                },
+            )
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (inSelection) {
+            Checkbox(
+                checked = selected,
+                onCheckedChange = { selection?.toggle(item) },
+                modifier = Modifier.size(36.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         if (showArtwork) {
             Artwork(state.artworkUrl(item, 160), 48.dp, 8.dp)
         } else {
@@ -186,7 +238,7 @@ private fun FolderRow(
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
-        if (onDownload != null) {
+        if (onDownload != null && !inSelection) {
             IconButton(onClick = onDownload) {
                 Icon(
                     Icons.Default.Download,
@@ -196,11 +248,13 @@ private fun FolderRow(
                 )
             }
         }
-        Icon(
-            Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
+        if (!inSelection) {
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
