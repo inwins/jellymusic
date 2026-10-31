@@ -1031,9 +1031,6 @@ fun DownloadsTab(state: AppState) {
         state.streamCache.cachedItems().filter { !state.downloads.isDownloaded(it.id) }
     }
     val local = state.localMusic.songs
-    val downloadSizes = remember(downloaded) {
-        downloaded.associate { it.id to state.downloads.sizeBytes(it.id) }
-    }
     RegisterSelectableItems(
         when (mode) {
             1 -> cached
@@ -1331,7 +1328,7 @@ fun DownloadsTab(state: AppState) {
                     },
                     onLongClick = { state.trackMenu = item },
                     trailingLabel = if (mode == 0) {
-                        formatBytes(downloadSizes[id] ?: 0L)
+                        formatBytes(state.downloads.sizeBytes(id))
                     } else {
                         null
                     },

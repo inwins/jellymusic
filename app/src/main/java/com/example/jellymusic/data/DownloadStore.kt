@@ -51,6 +51,7 @@ class DownloadStore(
     val progress = mutableStateMapOf<String, Float>()
     val errors = mutableStateMapOf<String, String>()
     val migration = mutableStateOf<MigrationState?>(null)
+    val sizes = mutableStateOf<Map<String, Long>>(emptyMap())
     val paused = mutableStateOf(false)
     private val activeItems = java.util.concurrent.ConcurrentHashMap<String, BaseItem>()
     val directoryLabel = mutableStateOf(settings.downloadDirLabel)
@@ -67,6 +68,28 @@ class DownloadStore(
         loadIndex()
         loadPending()
         cleanupStaleParts()
+        refreshSizes()
+    }
+
+    fun refreshSizes() {
+        scope.launch(Dispatchers.IO) {
+            val snapshot = records.values.toList()
+            val computed = snapshot.associate { it.item.id to sizeOfUri(it.uri) }
+            withContext(Dispatchers.Main) {
+                val valid = records.keys.toSet()
+                sizes.value = computed.filterKeys { it in valid }
+            }
+        }
+    }
+
+    private fun sizeOfUri(uriString: String): Long {
+        val uri = Uri.parse(uriString)
+        return when (uri.scheme) {
+            "file" -> File(uri.path ?: "").length()
+            else -> runCatching {
+                DocumentFile.fromSingleUri(context, uri)?.length() ?: 0L
+            }.getOrDefault(0L)
+        }
     }
 
     private fun cleanupStaleParts() {
@@ -190,6 +213,7 @@ class DownloadStore(
             errors.remove(id)
         }
         var lastUpdate = 0L
+        var downloadedBytes = 0L
         var tempUri: Uri? = null
         try {
             val name = downloadFileName(item)
@@ -201,6 +225,7 @@ class DownloadStore(
                     ?: throw IllegalStateException(context.getString(R.string.download_cannot_write))
                 output.use { stream ->
                     api.downloadAudio(item, stream) { downloaded, total ->
+                        downloadedBytes = downloaded
                         val now = System.currentTimeMillis()
                         if (now - lastUpdate > 200) {
                             lastUpdate = now
@@ -223,9 +248,15 @@ class DownloadStore(
             }
             saveIndex()
             runCatching { saveLyrics(api, item) }
+            val fileSize = if (downloadedBytes > 0L) {
+                downloadedBytes
+            } else {
+                records[id]?.let { sizeOfUri(it.uri) } ?: 0L
+            }
             withContext(Dispatchers.Main) {
                 progress.remove(id)
                 downloadedIds[id] = true
+                sizes.value = sizes.value + (id to fileSize)
             }
             return true
         } catch (e: CancellationException) {
@@ -255,6 +286,7 @@ class DownloadStore(
             if (!valid) {
                 records.remove(record.item.id)
                 downloadedIds.remove(record.item.id)
+                sizes.value = sizes.value - record.item.id
                 errors[record.item.id] = context.getString(R.string.download_failed)
                 removed++
             }
@@ -265,19 +297,7 @@ class DownloadStore(
         return removed
     }
 
-    fun totalBytes(): Long {
-        var total = 0L
-        for (record in records.values) {
-            val uri = Uri.parse(record.uri)
-            total += if (uri.scheme == "file") {
-                File(uri.path ?: "").length()
-            } else {
-                runCatching { DocumentFile.fromSingleUri(context, uri)?.length() ?: 0L }
-                    .getOrDefault(0L)
-            }
-        }
-        return total
-    }
+    fun totalBytes(): Long = sizes.value.values.sum()
 
     private fun savePending() {
         runCatching {
@@ -343,16 +363,7 @@ class DownloadStore(
         else -> runCatching { DocumentFile.fromSingleUri(context, uri)?.name }.getOrNull()
     }
 
-    fun sizeBytes(itemId: String): Long {
-        val record = records[itemId] ?: return 0L
-        val uri = Uri.parse(record.uri)
-        return when (uri.scheme) {
-            "file" -> File(uri.path ?: "").length()
-            else -> runCatching {
-                DocumentFile.fromSingleUri(context, uri)?.length() ?: 0L
-            }.getOrDefault(0L)
-        }
-    }
+    fun sizeBytes(itemId: String): Long = sizes.value[itemId] ?: 0L
 
     fun addedAt(itemId: String): Long = records[itemId]?.addedAt ?: 0L
 
@@ -362,6 +373,7 @@ class DownloadStore(
         deleteLyricsFor(audioUri)
         deleteUri(audioUri)
         downloadedIds.remove(item.id)
+        sizes.value = sizes.value - item.id
         progress.remove(item.id)
         saveIndex()
     }
