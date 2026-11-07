@@ -1,5 +1,8 @@
 Jellyfin 音乐 — 更新日志
 
+2.27.1
+- 修复进度条时间覆盖在轨道上的问题，已播放/剩余时间改为显示在进度条下方
+
 2.27.0
 - 包名改为 io.github.inwins.jellymusic，用于 GitHub 公开发布
 - 这是新的应用身份：旧的 com.example.jellymusic 不会被覆盖安装，数据各自独立

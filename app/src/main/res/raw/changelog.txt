@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.27.1
+- Fixed the seek bar time labels overlapping the progress track; elapsed and remaining times now sit below the bar
+
 2.27.0
 - Package renamed to io.github.inwins.jellymusic for the public GitHub release
 - This is a new app identity: the old com.example.jellymusic app is not upgraded and keeps its own data

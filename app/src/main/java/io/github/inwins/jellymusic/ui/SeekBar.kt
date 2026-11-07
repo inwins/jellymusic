@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -73,6 +74,7 @@ fun SeekBar(
         val bubbleX = (thumbX - bubbleWidth / 2)
             .coerceIn(0.dp, (maxWidth - bubbleWidth).coerceAtLeast(0.dp))
 
+        Column(Modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(30.dp)) {
             Canvas(
                 Modifier
@@ -185,6 +187,7 @@ fun SeekBar(
                 style = timeStyle,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
         }
     }
 }
