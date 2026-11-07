@@ -14,15 +14,15 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.jellymusic"
+    namespace = "io.github.inwins.jellymusic"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.jellymusic"
+        applicationId = "io.github.inwins.jellymusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 64
-        versionName = "2.26.14"
+        versionCode = 65
+        versionName = "2.27.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

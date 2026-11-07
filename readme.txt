@@ -1,8 +1,8 @@
 Jellyfin 音乐播放器 —— 构建说明
 ================================
 
-项目：com.example.jellymusic
-路径：<repo>
+项目：io.github.inwins.jellymusic
+路径：项目根目录
 技术栈：Kotlin + Jetpack Compose + Media3(ExoPlayer)
 compileSdk 34 / minSdk 26 / targetSdk 34
 
@@ -12,17 +12,17 @@ compileSdk 34 / minSdk 26 / targetSdk 34
 1. JDK 17
    验证：java -version
 2. Gradle 8.7
-   本机路径：gradle
+   Gradle 8.7（命令中的 gradle 可用本机安装路径）
    验证：gradle --version
 3. Android SDK
-   本机路径：<Android SDK>
+   本机 Android SDK 根目录（ANDROID_HOME）
    需要：platforms;android-34、build-tools、platform-tools(adb)
    local.properties 中已配置：
-       sdk.dir=<Android SDK>
+       sdk.dir=/path/to/Android/Sdk
    若换机器，请重新创建 local.properties 并写入自己的 SDK 路径。
 4. 设备调试
    adb 位于 adb
-   测试机序列号：REDACTED（Redmi Note 8 Pro / Android 11 / 已 root）
+   测试机：Android 8+ 设备（开启 USB 调试；root 可选）
 
 
 二、构建 Debug APK
@@ -96,11 +96,11 @@ compileSdk 34 / minSdk 26 / targetSdk 34
 
 4. 启动：
 
-    $ADB shell am start -n com.example.jellymusic/.MainActivity
+    $ADB shell am start -n io.github.inwins.jellymusic/.MainActivity
 
 重要：
 - 使用 -r 覆盖安装可保留登录状态和下载数据；
-- 不要 uninstall / 清除数据。卸载会删除 /sdcard/Android/data/com.example.jellymusic
+- 不要 uninstall / 清除数据。卸载会删除 /sdcard/Android/data/io.github.inwins.jellymusic
   （下载索引与默认下载文件都在里面）；
 - debug 版与 release 版签名不同，不能互相覆盖，切换时需要卸载（会丢数据）。
 
@@ -142,12 +142,12 @@ compileSdk 34 / minSdk 26 / targetSdk 34
 
 强制停止：
 
-    adb shell am force-stop com.example.jellymusic
+    adb shell am force-stop io.github.inwins.jellymusic
 
 
 八、数据位置与注意事项
 ----------------------
-- 默认下载目录：/sdcard/Android/data/com.example.jellymusic/files/audio/
+- 默认下载目录：/sdcard/Android/data/io.github.inwins.jellymusic/files/audio/
   文件命名：歌手 - 歌名 [ItemId].扩展名
   索引：同目录 index.json
 - 自定义下载目录：设置 → 下载 → 选择文件夹（SAF 目录）
@@ -161,7 +161,7 @@ compileSdk 34 / minSdk 26 / targetSdk 34
 
 九、目录结构
 ------------
-app/src/main/java/com/example/jellymusic/   源码
+app/src/main/java/io/github/inwins/jellymusic/   源码
   ui/             Compose 界面
   player/         播放器、可视化、节拍器、音频效果
   data/           数据存储（下载、设置、缓存、分析等）

@@ -21,7 +21,8 @@ captures/
 .externalNativeBuild/
 .cxx/
 
-# Local session helper (not part of the app)
+# Local helpers (not part of the app)
+scp.sh
 session.sh
 
 # Project version archives

@@ -1,5 +1,9 @@
 Jellyfin 音乐 — 更新日志
 
+2.27.0
+- 包名改为 io.github.inwins.jellymusic，用于 GitHub 公开发布
+- 这是新的应用身份：旧的 com.example.jellymusic 不会被覆盖安装，数据各自独立
+
 2.26.14
 - 删除下载前增加确认：单首歌曲、多选删除、歌曲菜单、正在播放菜单以及全部删除
 

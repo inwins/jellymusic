@@ -1,5 +1,9 @@
 Jellyfin Music — Changelog
 
+2.27.0
+- Package renamed to io.github.inwins.jellymusic for the public GitHub release
+- This is a new app identity: the old com.example.jellymusic app is not upgraded and keeps its own data
+
 2.26.14
 - Deleting downloads now asks for confirmation: single songs, selected songs, the song menu, the now playing menu, and delete-all
 
