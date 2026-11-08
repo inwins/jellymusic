@@ -149,6 +149,7 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
 private data class ArtistContent(
     val albums: List<BaseItem>,
     val songs: List<BaseItem>,
+    val similarArtists: List<BaseItem> = emptyList(),
 )
 
 @Composable
@@ -179,6 +180,7 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 ArtistContent(
                     albums = emptyList(),
                     songs = state.offlineArtistTracks(screen.name),
+                    similarArtists = emptyList(),
                 )
             } else {
                 val api = state.requireApi()
@@ -192,6 +194,9 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 }
                 ArtistContent(
                     albums = api.getArtistAlbums(screen.id),
+                    similarArtists = runCatching {
+                        api.getSimilarArtists(screen.id, 20)
+                    }.getOrDefault(emptyList()),
                     songs = allSongs.sortedWith(
                         compareBy(
                             { it.album ?: "" },
@@ -205,7 +210,7 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
         }) { content ->
             val albums = content.albums
             val songs = content.songs
-            var similarArtists by remember { mutableStateOf<List<BaseItem>>(emptyList()) }
+            val similarArtists = content.similarArtists
             var showAllSongs by remember(screen.id) { mutableStateOf(false) }
             var sortByAlbum by remember(screen.id) { mutableStateOf(true) }
             val orderedSongs = remember(songs, sortByAlbum) {
@@ -220,11 +225,6 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 if (showAllSongs) orderedSongs else orderedSongs.take(50)
             }
             RegisterSelectableItems(visibleSongs)
-            LaunchedEffect(screen.id) {
-                similarArtists = runCatching {
-                    state.requireApi().getSimilarArtists(screen.id, 20)
-                }.getOrDefault(emptyList())
-            }
             val songGroups = remember(visibleSongs, sortByAlbum) {
                 if (sortByAlbum) {
                     visibleSongs.withIndex().groupBy { it.value.album ?: "" }
