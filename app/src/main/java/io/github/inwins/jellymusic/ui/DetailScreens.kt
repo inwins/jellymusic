@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AlbumScreen(state: AppState, screen: Screen.Album) {
+    val listState = rememberLazyListState()
     val albumItem = remember(screen.id) {
         BaseItem(id = screen.id, name = screen.name, type = "MusicAlbum", isFolder = true)
     }
@@ -89,7 +90,6 @@ fun AlbumScreen(state: AppState, screen: Screen.Album) {
             )
             RegisterSelectableItems(tracks)
             val multiDisc = tracks.any { (it.discNumber ?: 1) > 1 }
-            val listState = rememberLazyListState()
             var didScroll by remember { mutableStateOf(false) }
             LaunchedEffect(tracks.size, state.player.current?.id) {
                 if (!didScroll && tracks.isNotEmpty()) {
@@ -153,6 +153,7 @@ private data class ArtistContent(
 
 @Composable
 fun ArtistScreen(state: AppState, screen: Screen.Artist) {
+    val listState = rememberLazyListState()
     val artistItem = remember(screen.id) {
         BaseItem(id = screen.id, name = screen.name, type = "MusicArtist", isFolder = true)
     }
@@ -232,6 +233,7 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
                 }
             }
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
