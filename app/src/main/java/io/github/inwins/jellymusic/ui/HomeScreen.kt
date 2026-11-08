@@ -530,6 +530,12 @@ fun AlbumsTab(state: AppState) {
                     Text(stringResource(R.string.retry))
                 }
             }
+        } else if (items.isEmpty() && endReached) {
+            EmptyHint(stringResource(R.string.search_no_results))
+        } else if (items.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -735,6 +741,12 @@ fun ArtistsTab(state: AppState) {
                 TextButton(onClick = { scope.launch { loadNext() } }) {
                     Text(stringResource(R.string.retry))
                 }
+            }
+        } else if (items.isEmpty() && endReached) {
+            EmptyHint(stringResource(R.string.search_no_results))
+        } else if (items.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         } else {
             val shownArtists = if (favoritesOnly) {
