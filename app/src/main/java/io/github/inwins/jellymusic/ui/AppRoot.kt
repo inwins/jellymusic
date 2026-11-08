@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.github.inwins.jellymusic.AppState
@@ -45,6 +46,7 @@ fun MainScaffold(state: AppState) {
     }
 
     val current = state.backStack.last()
+    val saveableStateHolder = rememberSaveableStateHolder()
     LaunchedEffect(current) { state.selection.clear() }
     LaunchedEffect(state.homeTab) { state.selection.clear() }
     val player = state.player
@@ -58,6 +60,7 @@ fun MainScaffold(state: AppState) {
                 .navigationBarsPadding(),
         ) {
             Box(Modifier.weight(1f)) {
+                saveableStateHolder.SaveableStateProvider(screenStateKey(current)) {
                 when (current) {
                     Screen.Home -> HomeScreen(state)
                     is Screen.Album -> AlbumScreen(state, current)
@@ -91,6 +94,7 @@ fun MainScaffold(state: AppState) {
                     is Screen.GenreSongs -> GenreSongsScreen(state, current)
                     Screen.Settings -> SettingsScreen(state)
                     Screen.Changelog -> ChangelogScreen(state)
+                }
                 }
             }
             if (state.selection.selecting) {
@@ -127,4 +131,38 @@ private fun HomeBottomBar(state: AppState) {
             )
         }
     }
+}
+private fun screenStateKey(screen: Screen): String = when (screen) {
+    Screen.Home -> "home"
+    is Screen.Album -> "album:${screen.id}"
+    is Screen.Artist -> "artist:${screen.id}"
+    is Screen.Playlist -> "playlist:${screen.id}"
+    is Screen.LocalPlaylist -> "local-playlist:${screen.id}"
+    Screen.Search -> "search"
+    Screen.AllSongs -> "all-songs"
+    Screen.Favorites -> "favorites"
+    Screen.FeatureLibrary -> "feature-library"
+    Screen.SmartPlaylists -> "smart-playlists"
+    Screen.ListeningStats -> "listening-stats"
+    Screen.RunningRadio -> "running-radio"
+    Screen.Daily -> "daily"
+    is Screen.OfflineAlbum -> "offline-album:${screen.key}"
+    is Screen.OfflineArtist -> "offline-artist:${screen.name}"
+    Screen.Practice -> "practice"
+    Screen.Theory -> "theory"
+    Screen.VocalTraining -> "vocal-training"
+    Screen.EarTraining -> "ear-training"
+    Screen.Tuner -> "tuner"
+    Screen.ChordLibrary -> "chord-library"
+    Screen.ScaleVisualizer -> "scale-visualizer"
+    Screen.DrumMachine -> "drum-machine"
+    Screen.Metronome -> "metronome"
+    is Screen.AudioFeatures -> "audio-features:${screen.item.id}"
+    Screen.Genres -> "genres"
+    Screen.Folders -> "folders"
+    is Screen.Folder -> "folder:${screen.id}"
+    is Screen.GenreSongs -> "genre-songs:${screen.id}"
+    Screen.Settings -> "settings"
+    Screen.Changelog -> "changelog"
+    Screen.NowPlaying -> "now-playing"
 }

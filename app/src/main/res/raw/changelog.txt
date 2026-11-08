@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.27.2
+- Returning from album or artist pages now restores the previous scroll position in albums, artists, search, related artists and other lists
+
 2.27.1
 - Fixed the seek bar time labels overlapping the progress track; elapsed and remaining times now sit below the bar
 
