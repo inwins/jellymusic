@@ -367,6 +367,26 @@ class DownloadStore(
 
     fun addedAt(itemId: String): Long = records[itemId]?.addedAt ?: 0L
 
+    fun localLyrics(itemId: String): String? {
+        val record = records[itemId] ?: return null
+        val audioUri = Uri.parse(record.uri)
+        return runCatching {
+            if (audioUri.scheme == "file") {
+                val audio = File(audioUri.path ?: return null)
+                val lyrics = File(audio.parentFile, lyricsDisplayName(audio.name))
+                if (lyrics.exists()) lyrics.readText(Charsets.UTF_8) else null
+            } else {
+                val audioName = displayName(audioUri) ?: return null
+                val tree = targetTree() ?: return null
+                val dir = DocumentFile.fromTreeUri(context, tree) ?: return null
+                val lyrics = dir.findFile(lyricsDisplayName(audioName)) ?: return null
+                context.contentResolver.openInputStream(lyrics.uri)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+            }
+        }.getOrNull()
+    }
+
     fun delete(item: BaseItem) {
         val record = records.remove(item.id) ?: return
         val audioUri = Uri.parse(record.uri)

@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -30,6 +31,7 @@ import io.github.inwins.jellymusic.data.FavoriteStore
 import io.github.inwins.jellymusic.data.LocalMusicStore
 import io.github.inwins.jellymusic.data.PlaybackReportStore
 import io.github.inwins.jellymusic.data.LocalPlaylistStore
+import io.github.inwins.jellymusic.data.NetworkGate
 import io.github.inwins.jellymusic.data.SearchHistoryStore
 import io.github.inwins.jellymusic.data.SelectionStore
 import io.github.inwins.jellymusic.data.SessionStore
@@ -42,6 +44,7 @@ import io.github.inwins.jellymusic.ui.Screen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import okhttp3.Request
@@ -102,6 +105,10 @@ class AppState(private val context: Context) {
     private var flushingReports = false
 
     init {
+        NetworkGate.offline = isOffline
+        scope.launch {
+            snapshotFlow { isOffline }.collect { NetworkGate.offline = it }
+        }
         player.onPlaybackStart = { item ->
             if (settings.reportPlayback && item.localUri == null) {
                 playbackReports.enqueue("start", item.id, player.positionMs)
@@ -125,6 +132,7 @@ class AppState(private val context: Context) {
 
     fun flushPlaybackReports() {
         if (flushingReports) return
+        if (isOffline) return
         val client = api ?: return
         if (!isOnline.value) return
         if (playbackReports.size() == 0) return
@@ -230,6 +238,7 @@ class AppState(private val context: Context) {
      */
     fun refreshConnection(force: Boolean = false) {
         if (!isLoggedIn.value) return
+        if (isOffline) return
         val now = System.currentTimeMillis()
         if (refreshingConnection || (!force && now - lastConnectionProbeAt < 3000L)) return
         val primary = session.serverUrl?.trimEnd('/') ?: return
@@ -462,6 +471,7 @@ class AppState(private val context: Context) {
 
     suspend fun syncOfflineChanges(): Boolean {
         val apiClient = api ?: return false
+        if (isOffline) return false
         if (settings.manualOffline) return false
         if (syncing.value) return false
         if (!checkServer()) return false
@@ -482,6 +492,7 @@ class AppState(private val context: Context) {
     }
 
     private fun refreshServerInfo() {
+        if (isOffline) return
         val client = api ?: return
         scope.launch {
             runCatching { client.getServerInfo() }.onSuccess { info ->

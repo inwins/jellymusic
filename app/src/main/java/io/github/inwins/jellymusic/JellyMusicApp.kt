@@ -4,7 +4,9 @@ import android.app.Application
 import coil.Coil
 import coil.ImageLoader
 import io.github.inwins.jellymusic.data.AuthHeaders
+import io.github.inwins.jellymusic.data.NetworkGate
 import okhttp3.OkHttpClient
+import java.io.IOException
 
 class JellyMusicApp : Application() {
     lateinit var appState: AppState
@@ -29,6 +31,7 @@ class JellyMusicApp : Application() {
 
         val imageClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
+                if (NetworkGate.offline) throw IOException("Offline mode")
                 val request = chain.request()
                 val authorization = AuthHeaders.authorization
                 val host = AuthHeaders.host

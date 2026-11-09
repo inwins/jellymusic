@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.27.3
+- Offline mode now blocks API, download, image and prefetch requests at the network layer
+- Lyrics fall back to the local .lrc file saved next to downloaded songs
+- Playlists show only local playlists offline; server playlist pages show an offline hint
+
 2.27.2
 - Returning from album or artist pages now restores the previous scroll position in albums, artists, search, related artists and other lists
 

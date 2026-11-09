@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.core.content.ContextCompat
 import io.github.inwins.jellymusic.util.LyricsPoster
 import io.github.inwins.jellymusic.util.MusicTheory
+import io.github.inwins.jellymusic.util.parseLrc
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -281,11 +282,19 @@ fun NowPlayingScreen(state: AppState) {
         }
     }
 
-    val lyrics by produceState<List<LyricLine>?>(null, current.id) {
-        value = try {
-            state.api?.getLyrics(current.id) ?: emptyList()
-        } catch (e: Exception) {
-            emptyList()
+    val lyrics by produceState<List<LyricLine>?>(null, current.id, state.isOffline) {
+        val local = state.downloads.localLyrics(current.id)
+            ?.let { parseLrc(it) }
+            .orEmpty()
+        value = if (state.isOffline) {
+            local
+        } else {
+            val remote = try {
+                state.api?.getLyrics(current.id)
+            } catch (e: Exception) {
+                null
+            }
+            remote?.takeIf { it.isNotEmpty() } ?: local
         }
     }
 

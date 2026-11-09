@@ -113,6 +113,7 @@ class StreamCache(context: Context, private val settings: AppSettings) {
     }
 
     fun prefetch(url: String) {
+        if (NetworkGate.offline) return
         if (url.isBlank()) return
         ioScope.launch {
             runCatching {

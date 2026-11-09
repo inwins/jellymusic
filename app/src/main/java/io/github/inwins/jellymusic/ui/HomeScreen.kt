@@ -809,7 +809,11 @@ fun PlaylistsTab(state: AppState) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    LaunchedEffect(refresh) {
+    LaunchedEffect(refresh, state.isOffline) {
+        if (state.isOffline) {
+            serverPlaylists = emptyList()
+            return@LaunchedEffect
+        }
         serverPlaylists = try {
             state.requireApi().getPlaylists()
         } catch (_: Exception) {

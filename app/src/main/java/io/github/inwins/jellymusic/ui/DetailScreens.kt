@@ -404,6 +404,10 @@ fun ArtistScreen(state: AppState, screen: Screen.Artist) {
 fun PlaylistScreen(state: AppState, screen: Screen.Playlist) {
     Column(Modifier.fillMaxSize()) {
         TopBar(screen.name, onBack = { state.back() })
+        if (state.isOffline) {
+            EmptyHint(stringResource(R.string.offline_hint))
+            return@Column
+        }
         Loaded(key = "playlist-${screen.id}", load = {
             state.requireApi().getPlaylistTracks(screen.id)
         }) { tracks ->

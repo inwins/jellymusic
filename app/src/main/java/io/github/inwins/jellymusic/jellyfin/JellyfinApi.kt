@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import io.github.inwins.jellymusic.R
 import io.github.inwins.jellymusic.data.DiskCache
+import io.github.inwins.jellymusic.data.NetworkGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,6 +56,10 @@ class JellyfinApi(
     private val refreshingKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     private val client = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            if (NetworkGate.offline) throw IOException("Offline mode")
+            chain.proceed(chain.request())
+        }
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
