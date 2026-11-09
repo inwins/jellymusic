@@ -544,6 +544,37 @@ class DownloadStore(
     private fun lyricsDisplayName(audioName: String): String =
         audioName.substringBeforeLast('.', audioName) + ".lrc"
 
+    suspend fun ensureLyrics(api: JellyfinApi, item: BaseItem): Boolean {
+        if (localLyrics(item.id) != null) return true
+        return runCatching {
+            saveLyrics(api, item)
+            localLyrics(item.id) != null
+        }.getOrDefault(false)
+    }
+
+    fun downloadMissingLyrics(
+        api: JellyfinApi,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+        onDone: (written: Int, total: Int) -> Unit = { _, _ -> },
+    ) {
+        scope.launch {
+            val items = records.values.map { it.item }
+            var done = 0
+            var written = 0
+            for (item in items) {
+                if (localLyrics(item.id) != null) {
+                    done++
+                    onProgress(done, items.size)
+                    continue
+                }
+                if (ensureLyrics(api, item)) written++
+                done++
+                onProgress(done, items.size)
+            }
+            onDone(written, items.size)
+        }
+    }
+
     private suspend fun saveLyrics(api: JellyfinApi, item: BaseItem) {
         val lines = runCatching { api.getLyrics(item.id) }.getOrNull() ?: return
         if (lines.isEmpty()) return

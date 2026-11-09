@@ -733,6 +733,28 @@ fun SettingsScreen(state: AppState) {
                 ) {
                     TextButton(
                         onClick = {
+                            state.api?.let { api ->
+                                state.downloads.downloadMissingLyrics(api) { written, total ->
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.download_lyrics_result,
+                                            written,
+                                            total,
+                                        ),
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                            }
+                        },
+                        enabled = !state.isOffline &&
+                            state.downloads.downloadedItems().isNotEmpty() &&
+                            !state.downloads.isMigrating,
+                    ) {
+                        Text(stringResource(R.string.download_lyrics))
+                    }
+                    TextButton(
+                        onClick = {
                             state.downloads.renameDownloads { renamed, failed ->
                                 Toast.makeText(
                                     context,

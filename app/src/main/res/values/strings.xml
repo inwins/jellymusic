@@ -369,6 +369,8 @@
     <string name="sort_recent">Recently added</string>
     <string name="sort_year">Year</string>
     <string name="auto_download_started">Auto download started</string>
+    <string name="download_lyrics">Download lyrics</string>
+    <string name="download_lyrics_result">Saved lyrics for %1$d of %2$d songs</string>
     <string name="rename_downloads">Rename downloads</string>
     <string name="rename_downloads_result">Renamed %1$d files, %2$d failed</string>
     <string name="verify_downloads">Verify downloads</string>
