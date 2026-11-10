@@ -77,6 +77,7 @@ class AppState(private val context: Context) {
     val isLoggedIn = mutableStateOf(session.hasSession)
     var homeTab by mutableIntStateOf(0)
     val isOnline = mutableStateOf(true)
+    val hasNetwork = mutableStateOf(true)
     val isWifi = mutableStateOf(false)
     val connectionIsLocal = mutableStateOf(false)
     val userName = mutableStateOf(session.userName)
@@ -105,10 +106,6 @@ class AppState(private val context: Context) {
     private var flushingReports = false
 
     init {
-        NetworkGate.offline = isOffline
-        scope.launch {
-            snapshotFlow { isOffline }.collect { NetworkGate.offline = it }
-        }
         player.onPlaybackStart = { item ->
             if (settings.reportPlayback && item.localUri == null) {
                 playbackReports.enqueue("start", item.id, player.positionMs)
@@ -132,7 +129,7 @@ class AppState(private val context: Context) {
 
     fun flushPlaybackReports() {
         if (flushingReports) return
-        if (isOffline) return
+        if (NetworkGate.offline) return
         val client = api ?: return
         if (!isOnline.value) return
         if (playbackReports.size() == 0) return
@@ -174,6 +171,7 @@ class AppState(private val context: Context) {
         override fun onAvailable(network: Network) {
             val wasOffline = !isOnline.value
             isOnline.value = true
+            hasNetwork.value = true
             updateNetworkType()
             lastServerCheckAt = 0
             if (wasOffline) {
@@ -190,12 +188,14 @@ class AppState(private val context: Context) {
             network: Network,
             networkCapabilities: NetworkCapabilities,
         ) {
+            hasNetwork.value = true
             updateNetworkType()
             if (isLoggedIn.value) refreshConnection()
         }
 
         override fun onLost(network: Network) {
-            isOnline.value = connectivityManager?.activeNetwork != null
+            hasNetwork.value = connectivityManager?.activeNetwork != null
+            isOnline.value = hasNetwork.value
             updateNetworkType()
         }
     }
@@ -238,7 +238,7 @@ class AppState(private val context: Context) {
      */
     fun refreshConnection(force: Boolean = false) {
         if (!isLoggedIn.value) return
-        if (isOffline) return
+        if (NetworkGate.offline) return
         val now = System.currentTimeMillis()
         if (refreshingConnection || (!force && now - lastConnectionProbeAt < 3000L)) return
         val primary = session.serverUrl?.trimEnd('/') ?: return
@@ -285,6 +285,12 @@ class AppState(private val context: Context) {
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
 
     init {
+        hasNetwork.value = connectivityManager?.activeNetwork != null
+        NetworkGate.offline = settings.manualOffline || !hasNetwork.value
+        scope.launch {
+            snapshotFlow { settings.manualOffline || !hasNetwork.value }
+                .collect { NetworkGate.offline = it }
+        }
         player.downloadStore = downloads
         updateNetworkType()
         runCatching { connectivityManager?.registerDefaultNetworkCallback(networkCallback) }
@@ -458,6 +464,22 @@ class AppState(private val context: Context) {
     val isOffline: Boolean
         get() = settings.manualOffline || !isOnline.value
 
+    fun setManualOffline(enabled: Boolean) {
+        settings.manualOffline = enabled
+        NetworkGate.offline = enabled || !hasNetwork.value
+        if (!enabled) {
+            scope.launch {
+                checkServer(force = true)
+                refreshConnection(force = true)
+                if (isOnline.value) {
+                    runCatching { syncOfflineChanges() }
+                }
+                refreshServerInfo()
+                refreshSignal.value += 1
+            }
+        }
+    }
+
     suspend fun checkServer(force: Boolean = false): Boolean {
         if (settings.manualOffline) return false
         val now = System.currentTimeMillis()
@@ -471,7 +493,7 @@ class AppState(private val context: Context) {
 
     suspend fun syncOfflineChanges(): Boolean {
         val apiClient = api ?: return false
-        if (isOffline) return false
+        if (NetworkGate.offline) return false
         if (settings.manualOffline) return false
         if (syncing.value) return false
         if (!checkServer()) return false
@@ -492,7 +514,7 @@ class AppState(private val context: Context) {
     }
 
     private fun refreshServerInfo() {
-        if (isOffline) return
+        if (NetworkGate.offline) return
         val client = api ?: return
         scope.launch {
             runCatching { client.getServerInfo() }.onSuccess { info ->

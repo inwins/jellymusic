@@ -203,13 +203,7 @@ fun SettingsScreen(state: AppState) {
                     }
                     Switch(
                         checked = state.settings.manualOffline,
-                        onCheckedChange = { enabled ->
-                            state.settings.manualOffline = enabled
-                            if (!enabled) {
-                                state.refreshSignal.value += 1
-                                scope.launch { state.syncOfflineChanges() }
-                            }
-                        },
+                        onCheckedChange = { state.setManualOffline(it) },
                     )
                 }
             }

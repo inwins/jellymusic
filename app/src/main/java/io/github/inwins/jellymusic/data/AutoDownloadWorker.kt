@@ -26,7 +26,7 @@ class AutoDownloadWorker(
         val api = state.api ?: return Result.success()
         val settings = state.settings
 
-        if (state.isOffline) return Result.success()
+        if (NetworkGate.offline) return Result.success()
         if (settings.manualOffline) return Result.success()
         if (settings.autoDownloadWifiOnly && isMetered()) return Result.success()
         if (!settings.autoDownloadFavorites &&
