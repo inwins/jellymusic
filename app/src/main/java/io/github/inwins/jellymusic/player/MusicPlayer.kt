@@ -219,6 +219,12 @@ class MusicPlayer(
                 }
             }
 
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (playWhenReady && !stopping && exo.mediaItemCount > 0 && isAtEnd()) {
+                    restartCurrentOrNext()
+                }
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val previous = current
                 if (!stopping && previous != null && previous.id != lastRecordedId) {
@@ -300,6 +306,26 @@ class MusicPlayer(
         exo.setSkipSilenceEnabled(settings.skipSilence)
     }
 
+    private fun isAtEnd(): Boolean {
+        if (exo.playbackState == Player.STATE_ENDED) return true
+        val duration = exo.duration
+        return duration > 0L && exo.currentPosition >= duration
+    }
+
+    /**
+     * Restarts the current track (or advances to the next one) when playback
+     * has reached the end. Single-loop always restarts the same track.
+     */
+    private fun restartCurrentOrNext() {
+        lastStartedId = null
+        lastRecordedId = null
+        when {
+            exo.repeatMode == Player.REPEAT_MODE_ONE -> exo.seekTo(0)
+            exo.hasNextMediaItem() -> exo.seekToNextMediaItem()
+            else -> exo.seekTo(0)
+        }
+    }
+
     fun toggle() {
         if (exo.playWhenReady) {
             fadeTo(0f, settings.fadeMs.toLong()) {
@@ -307,6 +333,9 @@ class MusicPlayer(
                 exo.volume = 1f
             }
         } else {
+            if (isAtEnd()) {
+                restartCurrentOrNext()
+            }
             exo.volume = 0f
             exo.play()
             startPlaybackService()

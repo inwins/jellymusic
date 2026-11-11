@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.27.6
+- Pressing play at the end of a track now restarts that track from the beginning, or advances to the next track if the list has one; works from the app, notification and lock screen
+
 2.27.5
 - Fixed the play mode toast showing the previous mode, which made the single-loop and list-loop icons appear reversed
 - Package remains io.github.inwins.jellymusic for the inwins GitHub account
