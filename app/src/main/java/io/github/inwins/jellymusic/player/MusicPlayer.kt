@@ -211,6 +211,7 @@ class MusicPlayer(
                     if (item != null) {
                         onPlaybackStop?.invoke(item, true)
                     }
+                    exo.playWhenReady = false
                     if (sleepAtEndOfTrack) {
                         sleepAtEndOfTrack = false
                         exo.volume = 1f
@@ -327,15 +328,20 @@ class MusicPlayer(
     }
 
     fun toggle() {
+        if (isAtEnd()) {
+            restartCurrentOrNext()
+            exo.volume = 0f
+            exo.play()
+            startPlaybackService()
+            fadeTo(1f, settings.fadeMs.toLong())
+            return
+        }
         if (exo.playWhenReady) {
             fadeTo(0f, settings.fadeMs.toLong()) {
                 exo.pause()
                 exo.volume = 1f
             }
         } else {
-            if (isAtEnd()) {
-                restartCurrentOrNext()
-            }
             exo.volume = 0f
             exo.play()
             startPlaybackService()
