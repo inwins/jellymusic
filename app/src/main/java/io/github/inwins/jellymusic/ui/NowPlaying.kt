@@ -269,6 +269,7 @@ fun NowPlayingScreen(state: AppState) {
         onDispose { metronome.stop() }
     }
     var moreMenuOpen by remember { mutableStateOf(false) }
+    val modeToast = remember { mutableStateOf<Toast?>(null) }
     var confirmDeleteDownload by remember { mutableStateOf(false) }
     var showSleepDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -1026,11 +1027,14 @@ fun NowPlayingScreen(state: AppState) {
                                     PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
                                     PlayMode.SHUFFLE -> R.string.play_mode_shuffle
                                 }
-                                Toast.makeText(
+                                modeToast.value?.cancel()
+                                val toast = Toast.makeText(
                                     context,
                                     context.getString(newLabel),
                                     Toast.LENGTH_SHORT,
-                                ).show()
+                                )
+                                modeToast.value = toast
+                                toast.show()
                             },
                             modifier = Modifier.size(44.dp),
                         ) {
