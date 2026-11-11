@@ -1020,9 +1020,15 @@ fun NowPlayingScreen(state: AppState) {
                         IconButton(
                             onClick = {
                                 player.cyclePlayMode()
+                                val newLabel = when (player.playMode) {
+                                    PlayMode.SEQUENTIAL -> R.string.play_mode_sequential
+                                    PlayMode.LIST_LOOP -> R.string.play_mode_list_loop
+                                    PlayMode.SINGLE_LOOP -> R.string.play_mode_single_loop
+                                    PlayMode.SHUFFLE -> R.string.play_mode_shuffle
+                                }
                                 Toast.makeText(
                                     context,
-                                    context.getString(modeLabel),
+                                    context.getString(newLabel),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             },
