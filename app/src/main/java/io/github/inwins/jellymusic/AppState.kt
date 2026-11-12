@@ -445,6 +445,8 @@ class AppState(private val context: Context) {
         player.stop()
         session.clear()
         localServerUrlState.value = null
+        settings.manualOffline = false
+        NetworkGate.offline = !hasNetwork.value
         diskCache.clear()
         AuthHeaders.clear()
         streamCache.setAccessToken(null)
