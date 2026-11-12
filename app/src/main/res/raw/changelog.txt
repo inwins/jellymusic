@@ -1,5 +1,8 @@
 Jellyfin Music — Changelog
 
+2.27.8
+- Review fixes: logging out now exits offline mode so the login screen can reach the server, and the Gradle Kotlin compiler setting was repaired
+
 2.27.7
 - Next/previous now follow the queue correctly: next ignores single-loop, wraps in list-loop, and does nothing at the end in sequential mode
 - Previous restarts the current song only while it is playing past 3 seconds; after a song ends it goes to the previous song

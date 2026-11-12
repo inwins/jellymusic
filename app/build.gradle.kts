@@ -21,8 +21,8 @@ android {
         applicationId = "io.github.inwins.jellymusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 72
-        versionName = "2.27.7"
+        versionCode = 73
+        versionName = "2.27.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
