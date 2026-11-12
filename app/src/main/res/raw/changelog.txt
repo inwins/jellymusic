@@ -1,5 +1,10 @@
 Jellyfin Music — Changelog
 
+2.27.7
+- Next/previous now follow the queue correctly: next ignores single-loop, wraps in list-loop, and does nothing at the end in sequential mode
+- Previous restarts the current song only while it is playing past 3 seconds; after a song ends it goes to the previous song
+- Notification, lock screen and Bluetooth next/previous use the same logic as the in-app buttons
+
 2.27.6
 - Pressing play at the end of a track now restarts that track from the beginning, or advances to the next track if the list has one; works from the app, notification and lock screen
 

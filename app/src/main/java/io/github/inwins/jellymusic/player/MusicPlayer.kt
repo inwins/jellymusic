@@ -14,6 +14,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -350,11 +351,51 @@ class MusicPlayer(
     }
 
     fun next() {
-        exo.seekToNextMediaItem()
+        val timeline = exo.currentTimeline
+        if (timeline.isEmpty) return
+        val current = exo.currentMediaItemIndex
+        var next = timeline.getNextWindowIndex(
+            current,
+            Player.REPEAT_MODE_OFF,
+            exo.shuffleModeEnabled,
+        )
+        if (next == C.INDEX_UNSET && exo.repeatMode == Player.REPEAT_MODE_ALL) {
+            next = timeline.getNextWindowIndex(
+                current,
+                Player.REPEAT_MODE_ALL,
+                exo.shuffleModeEnabled,
+            )
+        }
+        if (next != C.INDEX_UNSET && next != current) {
+            exo.seekTo(next, 0L)
+        }
     }
 
     fun previous() {
-        if (exo.currentPosition > 3000) exo.seekTo(0) else exo.seekToPreviousMediaItem()
+        if (exo.playbackState != Player.STATE_ENDED && exo.currentPosition > 3000L) {
+            exo.seekTo(0)
+            return
+        }
+        val timeline = exo.currentTimeline
+        if (timeline.isEmpty) return
+        val current = exo.currentMediaItemIndex
+        var previous = timeline.getPreviousWindowIndex(
+            current,
+            Player.REPEAT_MODE_OFF,
+            exo.shuffleModeEnabled,
+        )
+        if (previous == C.INDEX_UNSET && exo.repeatMode == Player.REPEAT_MODE_ALL) {
+            previous = timeline.getPreviousWindowIndex(
+                current,
+                Player.REPEAT_MODE_ALL,
+                exo.shuffleModeEnabled,
+            )
+        }
+        if (previous != C.INDEX_UNSET && previous != current) {
+            exo.seekTo(previous, 0L)
+        } else {
+            exo.seekTo(0)
+        }
     }
 
     fun seekTo(positionMs: Long) {

@@ -2,6 +2,7 @@ package io.github.inwins.jellymusic.player
 
 import android.app.PendingIntent
 import android.content.Intent
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -17,7 +18,13 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        val player = (application as JellyMusicApp).appState.player.exo
+        val appPlayer = (application as JellyMusicApp).appState.player
+        val player = object : ForwardingPlayer(appPlayer.exo) {
+            override fun seekToNext() = appPlayer.next()
+            override fun seekToNextMediaItem() = appPlayer.next()
+            override fun seekToPrevious() = appPlayer.previous()
+            override fun seekToPreviousMediaItem() = appPlayer.previous()
+        }
         val sessionActivity = PendingIntent.getActivity(
             this,
             0,
